@@ -82,6 +82,38 @@ You should see output like this:
 
 The script cleans up after itself, so the table is empty again when it finishes.
 
+## 7. Seed starting staff
+
+The seeder adds the starting staff listed in `SEED_STAFF` in `scripts/db-seed.mts`. Right now that's only Angelie (supervisor, 06:00–14:00).
+
+1. Pick Angelie's PIN (4–6 digits) and add it to `.env.local`:
+   ```
+   SEED_PIN_ANGELIE=4821
+   ```
+   Only a bcrypt hash of the PIN goes into the database, and `.env.local` is never committed.
+2. Run:
+   ```bash
+   npm run db:seed
+   ```
+   Expected output:
+   ```
+   → Seeding 1 staff into https://….supabase.co
+   ✔ Added Angelie · supervisor · 06:00–14:00
+
+   ✅ Done: 1 added, 0 skipped.
+   ```
+3. Check **Table Editor → staff** in the dashboard. You should see Angelie's row, with `pin_hash` starting with `$2`.
+
+It's safe to run the seeder again. Anyone who already exists (an active staff member with the same name) is skipped, and their PIN and shift are left alone.
+
+**To add another person**, add a line to `SEED_STAFF` in `scripts/db-seed.mts` and set their PIN variable in `.env.local`:
+
+```ts
+{ name: "Marco", role: "barista", shiftStart: "14:00", shiftEnd: "22:00", pinEnv: "SEED_PIN_MARCO" },
+```
+
+Then run `npm run db:seed` again.
+
 ## Troubleshooting
 
 | Message | Fix |
@@ -90,6 +122,7 @@ The script cleans up after itself, so the table is empty again when it finishes.
 | `The staff table doesn't exist yet` | Run `npm run db:push` (step 5). |
 | `The key was rejected` | Use the **secret** key (`sb_secret_…`), not the publishable one. |
 | `Cannot find project ref` on `db:push` | Run the link command from step 4. |
+| `set SEED_PIN_ANGELIE=<4–6 digits>` | Add that PIN variable to `.env.local` (step 7). |
 
 ## Adding schema changes later
 

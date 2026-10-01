@@ -8,6 +8,10 @@ export const DOUBLE_TAP_MS = 60 * 1000;
 
 export const PIN_PATTERN = /^\d{4,6}$/;
 
+/** Wrong PINs allowed before the staff member is locked out (PRD §8.3). */
+export const PIN_MAX_ATTEMPTS = 5;
+export const PIN_LOCK_MS = 5 * 60 * 1000;
+
 export function isStaleIn(last: LastPunch | null, now: Date): boolean {
   return (
     last?.type === "in" &&

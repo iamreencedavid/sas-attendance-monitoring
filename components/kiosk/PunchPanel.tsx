@@ -1,7 +1,14 @@
-import type { PunchType, Staff } from "@/lib/punch/types";
+import type { PunchType, Staff, StaffRole } from "@/lib/punch/types";
+
+const ROLE_LABELS: Record<StaffRole, string> = {
+  barista: "Barista",
+  kitchen: "Kitchen",
+  supervisor: "Supervisor",
+};
 
 type Props = {
   staff: Staff[];
+  loadError: boolean;
   staffId: string;
   pin: string;
   statusText: string | null;
@@ -19,6 +26,7 @@ const fieldClass =
 
 export function PunchPanel({
   staff,
+  loadError,
   staffId,
   pin,
   statusText,
@@ -31,6 +39,12 @@ export function PunchPanel({
   onPunch,
 }: Props) {
   const busy = submitting !== null;
+  const noStaff = loadError || staff.length === 0;
+  const listMessage = loadError
+    ? "Couldn't load the staff list. Check the connection and reload."
+    : staff.length === 0
+      ? "No staff yet. Ask the owner to add staff."
+      : null;
   const canPunch = cameraReady && !busy && staffId !== "" && pin.length >= 4;
 
   return (
@@ -45,19 +59,22 @@ export function PunchPanel({
         <select
           id="staff"
           value={staffId}
-          disabled={busy}
+          disabled={busy || noStaff}
           onChange={(e) => onStaffChange(e.target.value)}
           className={fieldClass}
         >
           <option value="">Select your name</option>
           {staff.map((s) => (
             <option key={s.id} value={s.id}>
-              {s.name}
+              {s.name} · {ROLE_LABELS[s.role]}
             </option>
           ))}
         </select>
-        <p aria-live="polite" className="min-h-5 text-sm text-muted">
-          {statusText}
+        <p
+          aria-live="polite"
+          className={`min-h-5 text-sm ${listMessage ? "font-medium text-punch-out" : "text-muted"}`}
+        >
+          {listMessage ?? statusText}
         </p>
       </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getLastPunch, mockPunch } from "@/lib/punch/mock";
+import { getLastPunch, submitPunch } from "@/lib/punch/local";
 import { isStaleIn, nextAllowedType, PIN_PATTERN } from "@/lib/punch/rules";
 import type { LastPunch, PunchType, Staff } from "@/lib/punch/types";
 import { CameraPreview, type CameraHandle, type CameraStatus } from "./CameraPreview";
@@ -14,6 +14,7 @@ const IDLE_RESET_MS = 30_000;
 
 type Selection = {
   staffId: string;
+  name: string;
   allowedType: PunchType;
   statusText: string;
 };
@@ -39,7 +40,7 @@ function describeStatus(last: LastPunch | null, now: Date): string {
     : `Clocked out since ${formatTime(last.punchedAt)}`;
 }
 
-export function Kiosk({ staff }: { staff: Staff[] }) {
+export function Kiosk({ staff, loadError }: { staff: Staff[]; loadError: boolean }) {
   const cameraRef = useRef<CameraHandle>(null);
   const [cameraStatus, setCameraStatus] = useState<CameraStatus>("loading");
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -61,7 +62,8 @@ export function Kiosk({ staff }: { staff: Staff[] }) {
   function selectStaff(staffId: string) {
     setPin("");
     setError(null);
-    if (!staffId) {
+    const person = staff.find((s) => s.id === staffId);
+    if (!person) {
       setSelection(null);
       return;
     }
@@ -69,6 +71,7 @@ export function Kiosk({ staff }: { staff: Staff[] }) {
     const last = getLastPunch(staffId);
     setSelection({
       staffId,
+      name: person.name,
       allowedType: nextAllowedType(last, now),
       statusText: describeStatus(last, now),
     });
@@ -87,7 +90,10 @@ export function Kiosk({ staff }: { staff: Staff[] }) {
     try {
       const photo = await cameraRef.current!.capture();
       photoUrl = URL.createObjectURL(photo);
-      const result = await mockPunch({ staffId: selection.staffId, pin, type, photo });
+      const result = await submitPunch(
+        { staffId: selection.staffId, pin, type, photo },
+        selection.name,
+      );
       if (result.ok) {
         setSuccess({ name: result.name, type: result.type, punchedAt: result.punchedAt, photoUrl });
         photoUrl = null; // ownership moves to the success overlay
@@ -126,6 +132,7 @@ export function Kiosk({ staff }: { staff: Staff[] }) {
 
         <PunchPanel
           staff={staff}
+          loadError={loadError}
           staffId={selection?.staffId ?? ""}
           pin={pin}
           statusText={selection?.statusText ?? null}

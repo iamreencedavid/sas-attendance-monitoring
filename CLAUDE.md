@@ -8,8 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Sip and Simple attendance monitoring app. The spec is `docs/superpowers/specs/2026-10-01-attendance-monitoring-design.md`.
 
-- `/` is the public punch page (components in `components/kiosk/`). It still runs on mock data from `lib/punch/mock.ts`.
-- Supabase (cloud) is connected for the `staff` table only. Migrations live in `supabase/migrations/`, and the setup steps are in `docs/setup/supabase.md`.
+- `/` is the public punch page (components in `components/kiosk/`). The staff dropdown comes from Supabase (`lib/staff/queries.ts`), and the PIN is checked on the server (`lib/punch/actions.ts`). IN/OUT history is still kept in browser memory (`lib/punch/local.ts`).
+- Supabase (cloud) is connected for the `staff` table only. The secret-key client is `lib/supabase/server.ts` (server-only). Migrations live in `supabase/migrations/`, and the setup steps are in `docs/setup/supabase.md`.
 - Not built yet: punches table, photo storage, owner auth, `/admin`, and a test runner. Update this file as those pieces land.
 
 ## Commands
@@ -20,6 +20,7 @@ Sip and Simple attendance monitoring app. The spec is `docs/superpowers/specs/20
 - `npm run lint`: ESLint 9 flat config (`eslint.config.mjs`, Next core-web-vitals + TypeScript presets)
 - `npx tsc --noEmit`: standalone type check
 - `npm run db:push`: apply new `supabase/migrations/*.sql` to the linked Supabase project
+- `npm run db:seed`: insert starting staff from `SEED_STAFF` in `scripts/db-seed.mts` (skips existing names; PINs from `SEED_PIN_*` in `.env.local`)
 - `npm run db:check`: Supabase smoke test (inserts, reads and deletes a test staff row; needs `.env.local`, see `.env.example`)
 
 There is no test runner configured yet. `db:check` is the only database check.

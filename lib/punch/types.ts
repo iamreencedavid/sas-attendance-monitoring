@@ -1,8 +1,11 @@
 export type PunchType = "in" | "out";
 
+export type StaffRole = "barista" | "kitchen" | "supervisor";
+
 export type Staff = {
   id: string;
   name: string;
+  role: StaffRole;
 };
 
 export type LastPunch = {

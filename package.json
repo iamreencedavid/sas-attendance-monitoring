@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:push": "supabase db push",
-    "db:check": "node --env-file-if-exists=.env.local scripts/db-check.mts"
+    "db:check": "node --env-file-if-exists=.env.local scripts/db-check.mts",
+    "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",
