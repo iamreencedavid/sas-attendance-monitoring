@@ -77,3 +77,16 @@ export function addDays(dateKey: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+/** Shop wall time on a shop date ("2026-10-01", "08:00") as a UTC instant. */
+export function shopInstant(dateKey: string, time: string): Date {
+  const [h, m] = time.split(":").map(Number);
+  return new Date(shopDayStart(dateKey).getTime() + (h * 60 + m) * 60_000);
+}
+
+/** "2026-10-01" → "Thu 1 Oct" */
+export function formatDateKey(dateKey: string): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(
+    new Date(`${dateKey}T00:00:00Z`),
+  );
+}

@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 
 const NAV = [
   { href: "/admin/dashboard", label: "Dashboard" },
+  { href: "/admin/monitoring", label: "Monitoring" },
   { href: "/admin/staff", label: "Staff" },
 ];
 
