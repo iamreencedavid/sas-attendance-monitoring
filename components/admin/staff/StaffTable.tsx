@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { formatPeso } from "@/lib/staff/pay";
 import { shiftHours } from "@/lib/staff/shift";
 import type { StaffRecord } from "@/lib/staff/types";
 import { PinMeter } from "./PinMeter";
@@ -17,6 +18,10 @@ function Status({ staff }: { staff: StaffRecord }) {
     return <span className="text-[13px] font-bold text-stamp">Locked {staff.lockMinutesLeft} min</span>;
   }
   return <span className="text-[13px] font-bold text-ok">Active</span>;
+}
+
+function Peso({ amount }: { amount: number | null }) {
+  return amount === null ? <span className="text-admin-subtle">Not set</span> : <>{formatPeso(amount)}</>;
 }
 
 export function StaffTable({ staff }: { staff: StaffRecord[] }) {
@@ -116,6 +121,8 @@ export function StaffTable({ staff }: { staff: StaffRecord[] }) {
                   <th className="px-3.5 py-2.5 font-bold">Role</th>
                   <th className="px-3.5 py-2.5 font-bold">Shift</th>
                   <th className="px-3.5 py-2.5 font-bold">Hours</th>
+                  <th className="px-3.5 py-2.5 text-right font-bold">Daily rate</th>
+                  <th className="px-3.5 py-2.5 text-right font-bold">OT / hr</th>
                   <th className="px-3.5 py-2.5 font-bold">Wrong PINs</th>
                   <th className="px-3.5 py-2.5 font-bold">Status</th>
                   <th className="px-3.5 py-2.5"><span className="sr-only">Actions</span></th>
@@ -131,6 +138,8 @@ export function StaffTable({ staff }: { staff: StaffRecord[] }) {
                     <td className="px-3.5 py-3"><RoleChip role={s.role} muted={!s.active} /></td>
                     <td className="px-3.5 py-3">{s.shiftStart}–{s.shiftEnd}</td>
                     <td className="px-3.5 py-3">{shiftHours(s.shiftStart, s.shiftEnd)}</td>
+                    <td className="px-3.5 py-3 text-right"><Peso amount={s.dailyRate} /></td>
+                    <td className="px-3.5 py-3 text-right"><Peso amount={s.overtimeRate} /></td>
                     <td className="px-3.5 py-3"><PinMeter failed={s.failedPinCount} locked={!!s.lockMinutesLeft} /></td>
                     <td className="px-3.5 py-3"><Status staff={s} /></td>
                     <td className="px-3.5 py-3 text-right">
@@ -165,6 +174,11 @@ export function StaffTable({ staff }: { staff: StaffRecord[] }) {
                     <RoleChip role={s.role} muted={!s.active} />
                     <span>{s.shiftStart}–{s.shiftEnd}</span>
                     <span className="ml-auto"><PinMeter failed={s.failedPinCount} locked={!!s.lockMinutesLeft} /></span>
+                  </span>
+                  <span className="mt-1.5 block text-[13px] text-admin-subtle">
+                    {s.dailyRate === null && s.overtimeRate === null
+                      ? "Pay not set"
+                      : `${formatPeso(s.dailyRate)}/day · ${formatPeso(s.overtimeRate)}/hr OT`}
                   </span>
                 </button>
               </li>

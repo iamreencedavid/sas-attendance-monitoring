@@ -1,5 +1,6 @@
 import { STALE_IN_MS } from "@/lib/punch/rules";
-import { toMinutes } from "@/lib/staff/shift";
+import { isOvernight, toMinutes } from "@/lib/staff/shift";
+import { addDays, shopInstant } from "@/lib/time";
 import type { StaffRole } from "@/lib/punch/types";
 import type { ShiftPunch, ShiftRow } from "./types";
 
@@ -39,6 +40,8 @@ export function pairShifts(punches: ShiftPunch[], staff: Map<string, StaffInfo>,
       state: "no_in",
       workedMinutes: null,
       lateMinutes: 0,
+      overtimeMinutes: null,
+      undertimeMinutes: null,
       edited: false,
       note: null,
       history: [],
@@ -75,6 +78,17 @@ export function pairShifts(punches: ShiftPunch[], staff: Map<string, StaffInfo>,
         r.state = r.out ? "closed" : stale ? "missing_out" : "on_shift";
         r.workedMinutes = r.out ? minutesBetween(r.in.at, r.out.at) : stale ? null : minutesBetween(r.in.at, now);
         r.lateMinutes = Math.max(0, toMinutes(r.in.time) - toMinutes(r.in.shiftStart));
+        if (r.out) {
+          // Only time after the shift end counts; arriving early never adds overtime.
+          const { shiftStart, shiftEnd } = r.in;
+          const endDate = isOvernight(shiftStart, shiftEnd) ? addDays(r.dateKey, 1) : r.dateKey;
+          // From the OUT as displayed (seconds dropped), so 21:00 is 0m overtime
+          // and 20:15 is 45m early, exactly what the table shows.
+          const outMinute = Math.floor(new Date(r.out.at).getTime() / 60_000);
+          const diff = outMinute - shopInstant(endDate, shiftEnd).getTime() / 60_000;
+          r.overtimeMinutes = Math.max(0, diff);
+          r.undertimeMinutes = Math.max(0, -diff);
+        }
       }
       r.edited = r.in?.source === "manual" || r.out?.source === "manual" || r.history.length > 0;
       r.note = r.in?.note ?? r.out?.note ?? null;

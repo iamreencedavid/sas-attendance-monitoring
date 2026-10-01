@@ -20,6 +20,7 @@ import {
   updateStaff,
 } from "@/lib/staff/actions";
 import { describeChanges } from "@/lib/staff/changes";
+import { pesoInput } from "@/lib/staff/pay";
 import { describeShift, SHIFT_TIMES } from "@/lib/staff/shift";
 import type { ActionState, StaffRecord } from "@/lib/staff/types";
 import {
@@ -133,6 +134,7 @@ function TextInput({
   id,
   name,
   error,
+  className = "",
   ...props
 }: { id: string; name: StaffField; error?: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -141,7 +143,7 @@ function TextInput({
       name={name}
       aria-invalid={!!error}
       aria-describedby={`${id}-msg`}
-      className={`${inputClass} ${error ? "border-stamp ring-2 ring-stamp/15" : "border-admin-line"}`}
+      className={`${inputClass} ${error ? "border-stamp ring-2 ring-stamp/15" : "border-admin-line"} ${className}`}
       {...props}
     />
   );
@@ -187,6 +189,23 @@ function SelectInput({
       >
         <path d="M5.3 7.3a1 1 0 0 1 1.4 0L10 10.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.4Z" />
       </svg>
+    </div>
+  );
+}
+
+/** Peso amount with a fixed ₱ prefix; blank means "Not set". */
+function PesoInput({
+  id,
+  name,
+  error,
+  ...props
+}: { id: string; name: StaffField; error?: string } & InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div className="relative">
+      <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-admin-subtle">
+        ₱
+      </span>
+      <TextInput id={id} name={name} error={error} inputMode="decimal" autoComplete="off" placeholder="Not set" className="pl-7" {...props} />
     </div>
   );
 }
@@ -302,6 +321,15 @@ function StaffForm({ mode, onClose }: { mode: DrawerMode; onClose: () => void })
           </span>
         )}
       </p>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Daily rate" id={`${uid}-daily`} error={errors.dailyRate} hint="Basic pay per day">
+          <PesoInput id={`${uid}-daily`} name="dailyRate" error={errors.dailyRate} defaultValue={pesoInput(editing?.dailyRate ?? null)} />
+        </Field>
+        <Field label="Overtime per hour" id={`${uid}-ot`} error={errors.overtimeRate} hint="Paid per extra hour">
+          <PesoInput id={`${uid}-ot`} name="overtimeRate" error={errors.overtimeRate} defaultValue={pesoInput(editing?.overtimeRate ?? null)} />
+        </Field>
+      </div>
 
       {!editing && (
         <div className="grid grid-cols-2 gap-3">

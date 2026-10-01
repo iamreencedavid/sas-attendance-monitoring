@@ -45,6 +45,10 @@ export type ShiftRow = {
   /** IN→OUT, or IN→now while on shift; null without an IN. */
   workedMinutes: number | null;
   lateMinutes: number;
+  /** Minutes worked past the shift end (copied onto the IN); null until there's an IN and an OUT. */
+  overtimeMinutes: number | null;
+  /** Minutes the OUT came before the shift end (leaving early); null until there's an IN and an OUT. */
+  undertimeMinutes: number | null;
   /** Any punch on the row was entered or changed by the owner. */
   edited: boolean;
   note: string | null;

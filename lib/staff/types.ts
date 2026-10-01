@@ -8,6 +8,10 @@ export type StaffRecord = {
   role: StaffRole;
   shiftStart: string; // HH:MM
   shiftEnd: string; // HH:MM
+  /** Basic pay per day in pesos, or null when not set yet. */
+  dailyRate: number | null;
+  /** Overtime pay per hour in pesos, or null when not set yet. */
+  overtimeRate: number | null;
   active: boolean;
   failedPinCount: number;
   /** Minutes until the PIN lockout ends, or null when not locked. Computed on the server. */

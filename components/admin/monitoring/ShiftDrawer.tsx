@@ -6,8 +6,8 @@ import { SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { updateShift } from "@/lib/monitoring/actions";
 import type { ShiftActionState, ShiftPunch, ShiftRow } from "@/lib/monitoring/types";
 import { TIME_24H } from "@/lib/staff/validation";
-import { formatDateKey } from "@/lib/time";
-import { LateTag, Thumb } from "./Thumb";
+import { formatDateKey, formatDuration } from "@/lib/time";
+import { LateTag, PunchThumb } from "./Thumb";
 
 const INITIAL: ShiftActionState = { ok: false };
 
@@ -18,11 +18,11 @@ const primaryBtn =
 const secondaryBtn =
   "rounded-md border border-admin-line bg-white px-3.5 py-2 text-sm font-bold text-admin-slate outline-none hover:bg-admin-mist focus-visible:ring-2 focus-visible:ring-admin-slate disabled:opacity-60";
 
-function PhotoBox({ label, punch }: { label: string; punch: ShiftPunch | null }) {
+function PhotoBox({ label, punch, name }: { label: string; punch: ShiftPunch | null; name: string }) {
   return (
     <figure className="min-w-0">
       {punch ? (
-        <Thumb punch={punch} className="aspect-[4/3] w-full" />
+        <PunchThumb punch={punch} name={name} className="aspect-[4/3] w-full" />
       ) : (
         <span className="flex aspect-[4/3] w-full items-center justify-center rounded-md border border-dashed border-admin-line text-xs text-admin-subtle">
           No {label}
@@ -73,10 +73,10 @@ function TimeField({
   );
 }
 
-function HistoryItem({ punch }: { punch: ShiftPunch }) {
+function HistoryItem({ punch, name }: { punch: ShiftPunch; name: string }) {
   return (
     <li className="flex items-start gap-3 py-2.5">
-      <Thumb punch={punch} className="size-10" />
+      <PunchThumb punch={punch} name={name} className="size-10" />
       <div className="min-w-0 text-[13px]">
         <p className="font-bold tabular-nums">
           <span className="line-through">
@@ -154,8 +154,8 @@ export function ShiftDrawer({ shift, onClose }: { shift: ShiftRow; onClose: () =
         <input type="hidden" name="outId" value={shift.out?.id ?? ""} />
 
         <div className="grid grid-cols-2 gap-3">
-          <PhotoBox label="IN" punch={shift.in} />
-          <PhotoBox label="OUT" punch={shift.out} />
+          <PhotoBox label="IN" punch={shift.in} name={shift.staffName} />
+          <PhotoBox label="OUT" punch={shift.out} name={shift.staffName} />
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3">
@@ -184,6 +184,16 @@ export function ShiftDrawer({ shift, onClose }: { shift: ShiftRow; onClose: () =
             hint={outNextDay ? "Next day" : shift.out ? "24-hour, e.g. 16:00" : "Empty = still on shift. Fill in to add the OUT."}
           />
         </div>
+
+        {shift.out && shift.in && (
+          <p className="mb-3 text-[13px] text-admin-subtle tabular-nums">
+            Overtime:{" "}
+            <span className={shift.overtimeMinutes ? "font-bold text-roast-medium-ink" : ""}>
+              {shift.overtimeMinutes ? formatDuration(shift.overtimeMinutes) : "none"}
+            </span>{" "}
+            (after {shift.in.shiftEnd})
+          </p>
+        )}
 
         <div className="mt-2">
           <label htmlFor={`${uid}-note`} className="mb-1.5 block text-[12.5px] font-bold">Notes</label>
@@ -228,7 +238,7 @@ export function ShiftDrawer({ shift, onClose }: { shift: ShiftRow; onClose: () =
           <section className="mt-6 border-t border-admin-line pt-4">
             <h3 className="text-xs font-bold tracking-wider text-admin-subtle uppercase">History</h3>
             <ul className="divide-y divide-admin-line">
-              {shift.history.map((p) => <HistoryItem key={p.id} punch={p} />)}
+              {shift.history.map((p) => <HistoryItem key={p.id} punch={p} name={shift.staffName} />)}
             </ul>
           </section>
         )}

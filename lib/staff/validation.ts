@@ -1,11 +1,12 @@
 import type { StaffRole } from "@/lib/punch/types";
+import { MAX_PESOS, PESO_INPUT } from "./pay";
 
 export const STAFF_ROLES: StaffRole[] = ["barista", "kitchen", "supervisor"];
 
 export const TIME_24H = /^([01]\d|2[0-3]):[0-5]\d$/;
 const PIN = /^\d{4,6}$/;
 
-export type StaffField = "name" | "role" | "shiftStart" | "shiftEnd" | "pin" | "pinConfirm";
+export type StaffField = "name" | "role" | "shiftStart" | "shiftEnd" | "dailyRate" | "overtimeRate" | "pin" | "pinConfirm";
 export type FieldErrors = Partial<Record<StaffField, string>>;
 
 export type StaffInput = {
@@ -13,6 +14,8 @@ export type StaffInput = {
   role: StaffRole;
   shiftStart: string;
   shiftEnd: string;
+  dailyRate: number | null;
+  overtimeRate: number | null;
   pin?: string;
 };
 
@@ -21,6 +24,18 @@ type Parsed<T> = { ok: true; data: T } | { ok: false; errors: FieldErrors };
 function str(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+/** Blank → null; otherwise pesos ≥ 0 with up to 2 decimals. */
+function checkPeso(formData: FormData, key: "dailyRate" | "overtimeRate", errors: FieldErrors): number | null {
+  const raw = str(formData, key).replace(/[₱,\s]/g, "");
+  if (!raw) return null;
+  const amount = Number(raw);
+  if (!PESO_INPUT.test(raw) || amount >= MAX_PESOS) {
+    errors[key] = "Enter an amount like 650 or 650.50.";
+    return null;
+  }
+  return amount;
 }
 
 function checkPin(formData: FormData, errors: FieldErrors): string {
@@ -49,10 +64,13 @@ export function parseStaffForm(formData: FormData, { withPin }: { withPin: boole
   else if (!TIME_24H.test(shiftEnd)) errors.shiftEnd = "Use 24-hour time, e.g. 14:00.";
   else if (shiftStart === shiftEnd) errors.shiftEnd = "Start and end can't be the same time.";
 
+  const dailyRate = checkPeso(formData, "dailyRate", errors);
+  const overtimeRate = checkPeso(formData, "overtimeRate", errors);
+
   const pin = withPin ? checkPin(formData, errors) : undefined;
 
   if (Object.keys(errors).length) return { ok: false, errors };
-  return { ok: true, data: { name, role, shiftStart, shiftEnd, pin } };
+  return { ok: true, data: { name, role, shiftStart, shiftEnd, dailyRate, overtimeRate, pin } };
 }
 
 export function parsePinForm(formData: FormData): Parsed<{ pin: string }> {

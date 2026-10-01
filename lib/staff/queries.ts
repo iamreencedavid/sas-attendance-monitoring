@@ -20,6 +20,8 @@ type StaffRow = {
   role: StaffRecord["role"];
   shift_start: string;
   shift_end: string;
+  daily_rate: number | string | null;
+  overtime_rate: number | string | null;
   active: boolean;
   failed_pin_count: number;
   locked_until: string | null;
@@ -30,7 +32,7 @@ type StaffRow = {
 export async function getAllStaff(): Promise<StaffRecord[]> {
   const { data, error } = await createAdminClient()
     .from("staff")
-    .select("id, name, role, shift_start, shift_end, active, failed_pin_count, locked_until, created_at")
+    .select("id, name, role, shift_start, shift_end, daily_rate, overtime_rate, active, failed_pin_count, locked_until, created_at")
     .order("active", { ascending: false })
     .order("name");
   if (error) throw new Error(`Loading staff failed: ${error.message}`);
@@ -45,6 +47,8 @@ export async function getAllStaff(): Promise<StaffRecord[]> {
       role: row.role,
       shiftStart: row.shift_start.slice(0, 5),
       shiftEnd: row.shift_end.slice(0, 5),
+      dailyRate: row.daily_rate === null ? null : Number(row.daily_rate),
+      overtimeRate: row.overtime_rate === null ? null : Number(row.overtime_rate),
       active: row.active,
       failedPinCount: row.failed_pin_count,
       lockMinutesLeft: lockMs > 0 ? Math.ceil(lockMs / 60_000) : null,

@@ -39,7 +39,7 @@ export async function createStaff(_prev: ActionState, formData: FormData): Promi
   const parsed = parseStaffForm(formData, { withPin: true });
   if (!parsed.ok) return { ok: false, errors: parsed.errors };
 
-  const { name, role, shiftStart, shiftEnd, pin } = parsed.data;
+  const { name, role, shiftStart, shiftEnd, dailyRate, overtimeRate, pin } = parsed.data;
   const { error } = await createAdminClient()
     .from("staff")
     .insert({
@@ -47,6 +47,8 @@ export async function createStaff(_prev: ActionState, formData: FormData): Promi
       role,
       shift_start: shiftStart,
       shift_end: shiftEnd,
+      daily_rate: dailyRate,
+      overtime_rate: overtimeRate,
       pin_hash: await bcrypt.hash(pin!, 10),
     });
   return error ? failed(error) : saved();
@@ -59,10 +61,17 @@ export async function updateStaff(_prev: ActionState, formData: FormData): Promi
   const parsed = parseStaffForm(formData, { withPin: false });
   if (!parsed.ok) return { ok: false, errors: parsed.errors };
 
-  const { name, role, shiftStart, shiftEnd } = parsed.data;
+  const { name, role, shiftStart, shiftEnd, dailyRate, overtimeRate } = parsed.data;
   const { error } = await createAdminClient()
     .from("staff")
-    .update({ name, role, shift_start: shiftStart, shift_end: shiftEnd })
+    .update({
+      name,
+      role,
+      shift_start: shiftStart,
+      shift_end: shiftEnd,
+      daily_rate: dailyRate,
+      overtime_rate: overtimeRate,
+    })
     .eq("id", id);
   return error ? failed(error) : saved();
 }

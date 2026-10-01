@@ -93,6 +93,21 @@
   }
 }
 
+/* Print / Save PDF from the payroll dialog: print only the dialog, full height. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  [data-print-area],
+  [data-print-area] * {
+    visibility: visible;
+  }
+  /* Placement is done with print: utilities on the dialog itself (PayrollDialog). */
+  [data-print-area] [data-slot="dialog-close"] {
+    display: none;
+  }
+}
+
 /* Unlayered so it wins over any layered base styles: the kiosk's cream page. */
 body {
   background: var(--color-cream);

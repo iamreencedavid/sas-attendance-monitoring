@@ -144,6 +144,8 @@ create table staff (
   role             staff_role not null,
   shift_start      time not null,          -- 24h, e.g. 06:00
   shift_end        time not null,          -- may be < start (overnight shift)
+  daily_rate       numeric(10,2) check (daily_rate >= 0),     -- basic pay per day (₱), null = not set
+  overtime_rate    numeric(10,2) check (overtime_rate >= 0),  -- overtime pay per hour (₱), null = not set
   pin_hash         text not null,
   active           boolean not null default true,
   failed_pin_count int not null default 0 check (failed_pin_count >= 0),

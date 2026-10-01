@@ -1,6 +1,7 @@
 import { CameraIcon } from "lucide-react";
+import { PhotoButton } from "@/components/admin/PhotoViewer";
 import type { ShiftPunch } from "@/lib/monitoring/types";
-import { formatDuration } from "@/lib/time";
+import { formatDateKey, formatDuration } from "@/lib/time";
 
 /** Punch photo, or a placeholder when there is none (manual or purged). */
 export function Thumb({ punch, className = "size-9" }: { punch: ShiftPunch; className?: string }) {
@@ -20,6 +21,23 @@ export function Thumb({ punch, className = "size-9" }: { punch: ShiftPunch; clas
       alt={`${punch.type === "in" ? "IN" : "OUT"} photo at ${punch.time}`}
       className={`flex-none rounded-md bg-admin-mist object-cover ${className}`}
     />
+  );
+}
+
+/** "Jhen · IN 10:12 · Thu 1 Oct · Kiosk" */
+export function punchCaption(punch: ShiftPunch, name: string): string {
+  const type = punch.type === "in" ? "IN" : "OUT";
+  const source = punch.source === "kiosk" ? "Kiosk" : "Manual";
+  return `${name} · ${type} ${punch.time} · ${formatDateKey(punch.dateKey)} · ${source}`;
+}
+
+/** Thumb that opens the photo viewer when there is a photo. */
+export function PunchThumb({ punch, name, className = "size-9" }: { punch: ShiftPunch; name: string; className?: string }) {
+  if (!punch.photoUrl) return <Thumb punch={punch} className={className} />;
+  return (
+    <PhotoButton src={punch.photoUrl} caption={punchCaption(punch, name)} className={className}>
+      <Thumb punch={punch} className="size-full" />
+    </PhotoButton>
   );
 }
 

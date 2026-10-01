@@ -9,6 +9,7 @@ export type TodayPunch = {
   time: string; // HH:MM
   /** The staff shift start copied onto the punch when it was made. */
   shiftStart: string; // HH:MM
+  source: "kiosk" | "manual";
   /** 1-hour signed URL, or null for a manual or purged punch. */
   photoUrl: string | null;
 };

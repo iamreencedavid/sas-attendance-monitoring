@@ -1,4 +1,5 @@
 import type { StaffRole } from "@/lib/punch/types";
+import { formatPeso } from "./pay";
 import type { StaffRecord } from "./types";
 import type { StaffInput } from "./validation";
 
@@ -17,6 +18,12 @@ export function describeChanges(before: StaffRecord, after: StaffInput): string[
     changes.push(
       `Shift: ${before.shiftStart}–${before.shiftEnd} → ${after.shiftStart}–${after.shiftEnd}`,
     );
+  }
+  if (before.dailyRate !== after.dailyRate) {
+    changes.push(`Daily rate: ${formatPeso(before.dailyRate)} → ${formatPeso(after.dailyRate)}`);
+  }
+  if (before.overtimeRate !== after.overtimeRate) {
+    changes.push(`Overtime / hr: ${formatPeso(before.overtimeRate)} → ${formatPeso(after.overtimeRate)}`);
   }
   return changes;
 }

@@ -1,4 +1,5 @@
 import { CameraIcon } from "lucide-react";
+import { PhotoButton } from "@/components/admin/PhotoViewer";
 import { RoleChip } from "@/components/admin/staff/RoleChip";
 import type { StaffToday } from "@/lib/dashboard/types";
 import { formatDuration } from "@/lib/time";
@@ -62,17 +63,22 @@ export function PunchPhoto({
     );
   }
   if (last.photoUrl) {
+    const label = `${last.type === "in" ? "IN" : "OUT"} ${last.time}`;
     return (
-      <div className={`relative overflow-hidden bg-admin-mist ${className}`}>
+      <PhotoButton
+        src={last.photoUrl}
+        caption={`${staff.name} · ${label} · Today · ${last.source === "manual" ? "Manual" : "Kiosk"}`}
+        className={`overflow-hidden rounded-none bg-admin-mist ${className}`}
+      >
         {/* Short-lived signed Supabase URL, so next/image optimisation doesn't apply. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={last.photoUrl} alt={`${staff.name} at ${last.time}`} className="size-full object-cover" />
         {showTime && (
           <span className="absolute bottom-1.5 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-xs font-bold text-white tabular-nums">
-            {last.type === "in" ? "IN" : "OUT"} {last.time}
+            {label}
           </span>
         )}
-      </div>
+      </PhotoButton>
     );
   }
   return (
@@ -97,20 +103,28 @@ export function StaffCard({
   onOpen: () => void;
 }) {
   const outlined = staff.status === "missing_out" || staff.status === "late";
+  // A div with a full-card button behind the content, so the photo can be its
+  // own button (no button inside a button). Only buttons take clicks above it.
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-haspopup="dialog"
-      className={`flex w-full flex-col overflow-hidden rounded-[10px] border bg-white text-left tabular-nums outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-admin-slate focus-visible:ring-offset-2 ${
+    <div
+      className={`relative flex w-full flex-col overflow-hidden rounded-[10px] border bg-white text-left tabular-nums transition-shadow hover:shadow-md has-[>button:focus-visible]:ring-2 has-[>button:focus-visible]:ring-admin-slate has-[>button:focus-visible]:ring-offset-2 ${
         outlined ? "border-stamp/50" : "border-admin-line"
       } ${selected ? "ring-2 ring-admin-slate" : ""}`}
     >
-      <span className={`px-3 py-1.5 text-xs font-extrabold tracking-wider uppercase ${STATUS_BANDS[staff.status]}`}>
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-haspopup="dialog"
+        aria-label={`Open ${staff.name}'s day`}
+        className="absolute inset-0 outline-none"
+      />
+      <span className={`pointer-events-none relative px-3 py-1.5 text-xs font-extrabold tracking-wider uppercase ${STATUS_BANDS[staff.status]}`}>
         {STATUS_LABELS[staff.status]}
       </span>
-      <PunchPhoto staff={staff} className="aspect-[4/3] w-full" />
-      <span className="flex flex-1 flex-col gap-1.5 p-3">
+      <div className="pointer-events-none relative [&_button]:pointer-events-auto">
+        <PunchPhoto staff={staff} className="aspect-[4/3] w-full" />
+      </div>
+      <span className="pointer-events-none relative flex flex-1 flex-col gap-1.5 p-3">
         <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <span className="min-w-0 truncate font-bold">{staff.name}</span>
           <RoleChip role={staff.role} />
@@ -126,6 +140,6 @@ export function StaffCard({
           </span>
         )}
       </span>
-    </button>
+    </div>
   );
 }

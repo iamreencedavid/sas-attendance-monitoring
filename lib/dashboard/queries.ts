@@ -17,6 +17,7 @@ type PunchRow = {
   type: PunchType;
   punched_at: string;
   shift_start: string;
+  source: "kiosk" | "manual";
   photo_path: string | null;
 };
 
@@ -35,7 +36,7 @@ export async function getTodayBoard(): Promise<TodayBoard> {
   const { data, error } = staff.length
     ? await supabase
         .from("punches")
-        .select("staff_id, type, punched_at, shift_start, photo_path")
+        .select("staff_id, type, punched_at, shift_start, source, photo_path")
         .in("staff_id", staff.map((s) => s.id))
         .is("voided_at", null)
         .gte("punched_at", shopDayStart(yesterday).toISOString())
@@ -68,6 +69,7 @@ export async function getTodayBoard(): Promise<TodayBoard> {
               minutes,
               time: formatClock(minutes),
               shiftStart: r.shift_start.slice(0, 5),
+              source: r.source,
               photoUrl: r.photo_path ? (urls.get(r.photo_path) ?? null) : null,
             };
           });

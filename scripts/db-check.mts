@@ -172,6 +172,8 @@ async function main() {
     await expectRejected("role 'cashier' is not in the list", { ...base, name: `${name} x1`, role: "cashier" });
     await expectRejected("shift start equals end", { ...base, name: `${name} x2`, shift_end: "06:00" });
     await expectRejected("duplicate active name", { ...base, name });
+    await expectRejected("negative daily rate", { ...base, name: `${name} x3`, daily_rate: -1 });
+    await expectRejected("negative overtime rate", { ...base, name: `${name} x4`, overtime_rate: -0.01 });
 
     await checkPunches(inserted.id);
   } finally {

@@ -6,12 +6,22 @@ import { Sheet } from "@/components/ui/sheet";
 import type { ShiftPunch, ShiftRow } from "@/lib/monitoring/types";
 import { formatDateKey, formatDuration } from "@/lib/time";
 import { ShiftDrawer } from "./ShiftDrawer";
-import { EditedMark, LateTag, Thumb } from "./Thumb";
+import { EditedMark, LateTag, PunchThumb } from "./Thumb";
 
-function PunchCell({ punch, late = 0, nextDay = false }: { punch: ShiftPunch; late?: number; nextDay?: boolean }) {
+function PunchCell({
+  punch,
+  name,
+  late = 0,
+  nextDay = false,
+}: {
+  punch: ShiftPunch;
+  name: string;
+  late?: number;
+  nextDay?: boolean;
+}) {
   return (
     <span className="flex items-center gap-2">
-      <Thumb punch={punch} />
+      <PunchThumb punch={punch} name={name} />
       <span className="flex flex-col items-start gap-0.5">
         <span className="font-bold">
           {punch.time}
@@ -24,19 +34,24 @@ function PunchCell({ punch, late = 0, nextDay = false }: { punch: ShiftPunch; la
 }
 
 function OutCell({ shift }: { shift: ShiftRow }) {
-  if (shift.out) return <PunchCell punch={shift.out} nextDay={shift.outNextDay} />;
+  if (shift.out) return <PunchCell punch={shift.out} name={shift.staffName} nextDay={shift.outNextDay} />;
   if (shift.state === "missing_out") return <span className="text-[13px] font-bold text-stamp">! Missing OUT</span>;
   return <span className="text-[13px] font-bold text-ok">On shift</span>;
 }
 
 function InCell({ shift }: { shift: ShiftRow }) {
-  if (shift.in) return <PunchCell punch={shift.in} late={shift.lateMinutes} />;
+  if (shift.in) return <PunchCell punch={shift.in} name={shift.staffName} late={shift.lateMinutes} />;
   return <span className="text-[13px] font-bold text-stamp">! IN missing</span>;
 }
 
 function hours(shift: ShiftRow): string {
   if (shift.workedMinutes === null) return "—";
   return formatDuration(shift.workedMinutes) + (shift.state === "on_shift" ? " so far" : "");
+}
+
+function Overtime({ shift }: { shift: ShiftRow }) {
+  if (!shift.overtimeMinutes) return <span className="text-admin-subtle">—</span>;
+  return <span className="font-bold text-roast-medium-ink">{formatDuration(shift.overtimeMinutes)}</span>;
 }
 
 export function ShiftTable({ shifts }: { shifts: ShiftRow[] }) {
@@ -76,6 +91,7 @@ export function ShiftTable({ shifts }: { shifts: ShiftRow[] }) {
               <th className="px-3.5 py-2.5 font-bold">IN</th>
               <th className="px-3.5 py-2.5 font-bold">OUT</th>
               <th className="px-3.5 py-2.5 font-bold">Hours</th>
+              <th className="px-3.5 py-2.5 font-bold">OT</th>
               <th className="px-3.5 py-2.5 font-bold">Notes</th>
               <th className="px-3.5 py-2.5"><span className="sr-only">Actions</span></th>
             </tr>
@@ -93,6 +109,7 @@ export function ShiftTable({ shifts }: { shifts: ShiftRow[] }) {
                 <td className="px-3.5 py-2.5"><InCell shift={s} /></td>
                 <td className="px-3.5 py-2.5"><OutCell shift={s} /></td>
                 <td className="px-3.5 py-2.5 whitespace-nowrap">{hours(s)}</td>
+                <td className="px-3.5 py-2.5 whitespace-nowrap"><Overtime shift={s} /></td>
                 <td className="max-w-56 px-3.5 py-2.5">
                   <span className="flex flex-col items-start gap-0.5">
                     {s.edited && <EditedMark />}
@@ -118,16 +135,20 @@ export function ShiftTable({ shifts }: { shifts: ShiftRow[] }) {
       <ul className="space-y-2 md:hidden">
         {shifts.map((s) => (
           <li key={s.key}>
-            <button
-              type="button"
-              onClick={() => openDrawer(s.key)}
-              className="w-full rounded-[10px] border border-admin-line bg-white p-3.5 text-left tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-admin-slate"
-            >
-              <span className="flex items-center justify-between gap-2">
+            {/* A div with a full-card button behind the content, so the photos
+                can be their own buttons (no button inside a button). */}
+            <div className="relative rounded-[10px] border border-admin-line bg-white p-3.5 tabular-nums has-[>button:focus-visible]:ring-2 has-[>button:focus-visible]:ring-admin-slate">
+              <button
+                type="button"
+                onClick={() => openDrawer(s.key)}
+                aria-label={`Edit ${s.staffName}, ${formatDateKey(s.dateKey)}`}
+                className="absolute inset-0 rounded-[10px] outline-none"
+              />
+              <span className="pointer-events-none relative flex items-center justify-between gap-2">
                 <span className="font-bold">{s.staffName}</span>
                 <span className="text-[13px] text-admin-subtle">{formatDateKey(s.dateKey)}</span>
               </span>
-              <span className="mt-2.5 grid grid-cols-2 gap-2 text-[13px]">
+              <span className="pointer-events-none relative mt-2.5 grid grid-cols-2 gap-2 text-[13px] [&_button]:pointer-events-auto">
                 <span>
                   <span className="mb-1 block text-[11px] font-bold text-admin-subtle">IN</span>
                   <InCell shift={s} />
@@ -137,12 +158,17 @@ export function ShiftTable({ shifts }: { shifts: ShiftRow[] }) {
                   <OutCell shift={s} />
                 </span>
               </span>
-              <span className="mt-2.5 flex items-center justify-between gap-2 text-[13px]">
-                <span>{hours(s)}</span>
+              <span className="pointer-events-none relative mt-2.5 flex items-center justify-between gap-2 text-[13px]">
+                <span>
+                  {hours(s)}
+                  {!!s.overtimeMinutes && (
+                    <span className="font-bold text-roast-medium-ink"> · OT {formatDuration(s.overtimeMinutes)}</span>
+                  )}
+                </span>
                 {s.edited && <EditedMark />}
               </span>
-              {s.note && <span className="mt-1 line-clamp-2 block text-[13px] text-admin-subtle">{s.note}</span>}
-            </button>
+              {s.note && <span className="pointer-events-none relative mt-1 line-clamp-2 block text-[13px] text-admin-subtle">{s.note}</span>}
+            </div>
           </li>
         ))}
       </ul>
