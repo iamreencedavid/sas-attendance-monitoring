@@ -10,7 +10,7 @@ Sip and Simple attendance monitoring app. The spec is `docs/superpowers/specs/20
 
 - `/` is the public punch page (components in `components/kiosk/`). The staff dropdown comes from Supabase (`lib/staff/queries.ts`), and the PIN is checked on the server (`lib/punch/actions.ts`). IN/OUT history is still kept in browser memory (`lib/punch/local.ts`).
 - Supabase (cloud) is connected for the `staff` table only. The secret-key client is `lib/supabase/server.ts` (server-only). Migrations live in `supabase/migrations/`, and the setup steps are in `docs/setup/supabase.md`.
-- `/admin/staff` is the owner's staff page (Roast Scale table + right-side `<dialog>` drawer, `components/admin/`, Server Actions in `lib/staff/actions.ts`). There is no login yet, so `lib/auth/owner.ts` only allows it under `next dev`: it returns 404 in production.
+- `/admin/staff` is the owner's staff page (Roast Scale table + right-side `<dialog>` drawer, `components/admin/`, Server Actions in `lib/staff/actions.ts`). There is no login yet, and `lib/auth/owner.ts` currently allows everyone (open in production by owner choice) until owner auth lands.
 - Not built yet: punches table, photo storage, owner auth, and a test runner. Update this file as those pieces land.
 
 ## Commands
