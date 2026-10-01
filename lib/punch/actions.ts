@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/server";
 import { SHOP_TIMEZONE, shopDateKey, shopDayStart } from "@/lib/time";
+import { requestLocation } from "./location";
 import { isDoubleTap, nextAllowedType, PIN_LOCK_MS, PIN_MAX_ATTEMPTS, PIN_PATTERN } from "./rules";
 import type { LastPunch, PunchResult, PunchState, PunchType } from "./types";
 
@@ -161,13 +162,22 @@ export async function punch(formData: FormData): Promise<PunchResult> {
       .upload(photoPath, photo, { contentType: "image/jpeg" });
     if (upload.error) throw new Error(`Photo upload failed: ${upload.error.message}`);
 
+    // Recorded with the punch, never used to block it.
+    const requestHeaders = await headers();
+    const where = requestLocation(requestHeaders);
     const { data: punchedAt, error } = await supabase.rpc("record_punch", {
       p_id: punchId,
       p_staff_id: staffId,
       p_type: type satisfies PunchType,
       p_photo_path: photoPath,
-      p_user_agent: (await headers()).get("user-agent") ?? "",
+      p_user_agent: requestHeaders.get("user-agent") ?? "",
       p_timezone: SHOP_TIMEZONE,
+      p_ip: where.ip,
+      p_city: where.city,
+      p_region: where.region,
+      p_country: where.country,
+      p_latitude: where.latitude,
+      p_longitude: where.longitude,
     });
     if (error) {
       await supabase.storage.from(PHOTO_BUCKET).remove([photoPath]);

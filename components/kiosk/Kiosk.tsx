@@ -4,7 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getPunchState, punch as savePunch } from "@/lib/punch/actions";
 import { isStaleIn, nextAllowedType, PIN_PATTERN } from "@/lib/punch/rules";
 import type { PunchState, PunchType, Staff } from "@/lib/punch/types";
-import { CameraPreview, type CameraHandle, type CameraStatus } from "./CameraPreview";
+import {
+  CameraPreview,
+  type CameraHandle,
+  type CameraStatus,
+} from "./CameraPreview";
 import { KioskHeader } from "./KioskHeader";
 import { PunchPanel } from "./PunchPanel";
 import { PunchResult } from "./PunchResult";
@@ -28,7 +32,10 @@ type Success = {
 };
 
 function formatTime(date: Date) {
-  return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function describeStatus({ last, inToday }: PunchState, now: Date): string {
@@ -46,7 +53,13 @@ function describeStatus({ last, inToday }: PunchState, now: Date): string {
     : `Clocked out since ${formatTime(last.punchedAt)}`;
 }
 
-export function Kiosk({ staff, loadError }: { staff: Staff[]; loadError: boolean }) {
+export function Kiosk({
+  staff,
+  loadError,
+}: {
+  staff: Staff[];
+  loadError: boolean;
+}) {
   const cameraRef = useRef<CameraHandle>(null);
   const [cameraStatus, setCameraStatus] = useState<CameraStatus>("loading");
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -73,7 +86,12 @@ export function Kiosk({ staff, loadError }: { staff: Staff[]; loadError: boolean
       setSelection(null);
       return;
     }
-    setSelection({ staffId, name: person.name, allowedType: null, statusText: "Checking your status…" });
+    setSelection({
+      staffId,
+      name: person.name,
+      allowedType: null,
+      statusText: "Checking your status…",
+    });
     getPunchState(staffId)
       .then((state) => {
         const now = new Date();
@@ -91,7 +109,10 @@ export function Kiosk({ staff, loadError }: { staff: Staff[]; loadError: boolean
       .catch(() => {
         setSelection((current) =>
           current?.staffId === staffId
-            ? { ...current, statusText: "Couldn't check your status. Pick your name again." }
+            ? {
+                ...current,
+                statusText: "Couldn't check your status. Pick your name again.",
+              }
             : current,
         );
       });
@@ -117,7 +138,12 @@ export function Kiosk({ staff, loadError }: { staff: Staff[]; loadError: boolean
       form.set("photo", photo, "punch.jpg");
       const result = await savePunch(form);
       if (result.ok) {
-        setSuccess({ name: result.name, type: result.type, punchedAt: result.punchedAt, photoUrl });
+        setSuccess({
+          name: result.name,
+          type: result.type,
+          punchedAt: result.punchedAt,
+          photoUrl,
+        });
         photoUrl = null; // ownership moves to the success overlay
       } else {
         setError(result.error);
@@ -149,7 +175,11 @@ export function Kiosk({ staff, loadError }: { staff: Staff[]; loadError: boolean
 
       <main className="grid flex-1 gap-3 p-3 sm:gap-4 sm:p-4 lg:min-h-0 lg:grid-cols-[3fr_2fr]">
         <div className="aspect-4/3 w-full lg:aspect-auto lg:min-h-0">
-          <CameraPreview ref={cameraRef} status={cameraStatus} onStatusChange={setCameraStatus} />
+          <CameraPreview
+            ref={cameraRef}
+            status={cameraStatus}
+            onStatusChange={setCameraStatus}
+          />
         </div>
 
         <PunchPanel
@@ -167,10 +197,6 @@ export function Kiosk({ staff, loadError }: { staff: Staff[]; loadError: boolean
           onPunch={punch}
         />
       </main>
-
-      <footer className="px-4 pb-3 text-center text-xs text-mocha">
-        Photos are taken for attendance only · kept 90 days
-      </footer>
 
       {success && <PunchResult {...success} onDone={reset} />}
     </div>

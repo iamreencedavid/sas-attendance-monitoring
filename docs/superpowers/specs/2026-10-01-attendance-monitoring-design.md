@@ -172,6 +172,8 @@ create table punches (
   note        text,                      -- required when source = 'manual'
   voided_at   timestamptz,               -- a wrong punch is voided, never deleted
   void_reason text,                      -- required when voided
+  ip_address  inet,                      -- where a kiosk punch came from (record only)
+  geo_city, geo_region, geo_country, geo_latitude, geo_longitude  -- approx. location from the host's IP geolocation
   created_at  timestamptz not null default now(),
   constraint photo_required check (
     source = 'manual' or photo_path is not null or photo_purged_at is not null
@@ -301,7 +303,7 @@ supabase/migrations/
 - Storage maths: 15 staff × 2 punches × 30 days × ~60 KB ≈ **54 MB/month**, or about 160 MB at 90-day retention. That's well within the 1 GB free tier.
 - Secrets: `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` are server-only env vars and never `NEXT_PUBLIC_`.
 - PINs are only ever stored as bcrypt hashes (cost 10). The owner cannot view a PIN, only reset it.
-- **Open punch page:** because `/` is public, a punch from outside the shop is possible. The owner spots it through the photo (and `user_agent`) in `/admin`. If this becomes a problem, a later step can accept punches only from the shop's Wi-Fi (an IP allowlist).
+- **Open punch page:** because `/` is public, a punch from outside the shop is possible. The owner spots it through the photo, `user_agent`, and the recorded IP address and approximate city (shown in the Monitoring drawer) in `/admin`. Location is recorded on every kiosk punch but never enforced. If this becomes a problem, a later step can accept punches only from the shop's Wi-Fi (an IP allowlist).
 
 ## 12. Testing
 

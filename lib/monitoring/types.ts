@@ -2,6 +2,15 @@ import type { PunchType, StaffRole } from "@/lib/punch/types";
 
 export type PunchSource = "kiosk" | "manual";
 
+/** Where a kiosk punch came from (IP + approximate city). Record only. */
+export type PunchWhere = {
+  ip: string | null;
+  /** "Quezon City, 00, PH"; null when the host sent no geo data. */
+  label: string | null;
+  /** Approximate map link when coordinates were recorded. */
+  mapUrl: string | null;
+};
+
 /** One stored punch, with its time already in shop time. */
 export type ShiftPunch = {
   id: string;
@@ -19,6 +28,8 @@ export type ShiftPunch = {
   photoUrl: string | null;
   voidedAt: string | null;
   voidReason: string | null;
+  /** Null for manual punches and punches recorded before location capture. */
+  where: PunchWhere | null;
 };
 
 /**

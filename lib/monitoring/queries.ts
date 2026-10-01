@@ -4,7 +4,7 @@ import { getAllStaff } from "@/lib/staff/queries";
 import { addDays, shopDayStart, shopNow } from "@/lib/time";
 import type { PunchType } from "@/lib/punch/types";
 import { pairShifts } from "./shifts";
-import type { MonitoringFilters, PunchSource, ShiftPunch, ShiftRow } from "./types";
+import type { MonitoringFilters, PunchSource, PunchWhere, ShiftPunch, ShiftRow } from "./types";
 
 const PHOTO_BUCKET = "punch-photos";
 const PHOTO_URL_SECONDS = 60 * 60;
@@ -21,7 +21,24 @@ type PunchRow = {
   photo_path: string | null;
   voided_at: string | null;
   void_reason: string | null;
+  ip_address: string | null;
+  geo_city: string | null;
+  geo_region: string | null;
+  geo_country: string | null;
+  geo_latitude: number | string | null;
+  geo_longitude: number | string | null;
 };
+
+function whereOf(r: PunchRow): PunchWhere | null {
+  const label = [r.geo_city, r.geo_region, r.geo_country].filter(Boolean).join(", ") || null;
+  if (!r.ip_address && !label) return null;
+  const hasPoint = r.geo_latitude !== null && r.geo_longitude !== null;
+  return {
+    ip: r.ip_address,
+    label,
+    mapUrl: hasPoint ? `https://www.google.com/maps?q=${Number(r.geo_latitude)},${Number(r.geo_longitude)}` : null,
+  };
+}
 
 /**
  * Shifts whose date (the IN's shop date) is within from–to, newest first.
@@ -33,7 +50,9 @@ export async function getShifts({ staffId, from, to }: MonitoringFilters): Promi
 
   let query = supabase
     .from("punches")
-    .select("id, staff_id, type, punched_at, shift_start, shift_end, source, note, photo_path, voided_at, void_reason")
+    .select(
+      "id, staff_id, type, punched_at, shift_start, shift_end, source, note, photo_path, voided_at, void_reason, ip_address, geo_city, geo_region, geo_country, geo_latitude, geo_longitude",
+    )
     .gte("punched_at", shopDayStart(addDays(from, -1)).toISOString())
     .lt("punched_at", shopDayStart(addDays(to, 2)).toISOString())
     .order("punched_at");
@@ -66,6 +85,7 @@ export async function getShifts({ staffId, from, to }: MonitoringFilters): Promi
       photoUrl: r.photo_path ? (urls.get(r.photo_path) ?? null) : null,
       voidedAt: r.voided_at,
       voidReason: r.void_reason,
+      where: whereOf(r),
     };
   });
 

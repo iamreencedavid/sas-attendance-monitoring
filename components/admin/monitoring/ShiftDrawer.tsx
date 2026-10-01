@@ -1,5 +1,6 @@
 "use client";
 
+import { MapPinIcon } from "lucide-react";
 import { startTransition, useActionState, useEffect, useId, useState, type FormEvent } from "react";
 import { RoleChip } from "@/components/admin/staff/RoleChip";
 import { SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -18,6 +19,31 @@ const primaryBtn =
 const secondaryBtn =
   "rounded-md border border-admin-line bg-white px-3.5 py-2 text-sm font-bold text-admin-slate outline-none hover:bg-admin-mist focus-visible:ring-2 focus-visible:ring-admin-slate disabled:opacity-60";
 
+/** "Quezon City, 00, PH · 203.177.12.4 · Approx. map ↗", or why there is none. */
+function WhereLine({ punch }: { punch: ShiftPunch }) {
+  const where = punch.where;
+  return (
+    <p className="mt-1 flex items-start gap-1 text-[11.5px] leading-snug text-admin-subtle tabular-nums">
+      <MapPinIcon aria-hidden="true" className="mt-px size-3 flex-none" />
+      {where ? (
+        <span className="min-w-0 break-words">
+          {[where.label, where.ip].filter(Boolean).join(" · ")}
+          {where.mapUrl && (
+            <>
+              {" · "}
+              <a href={where.mapUrl} target="_blank" rel="noreferrer" className="font-semibold text-admin-slate underline-offset-2 hover:underline">
+                Approx. map ↗
+              </a>
+            </>
+          )}
+        </span>
+      ) : (
+        <span>{punch.source === "manual" ? "Entered by owner" : "Location not recorded"}</span>
+      )}
+    </p>
+  );
+}
+
 function PhotoBox({ label, punch, name }: { label: string; punch: ShiftPunch | null; name: string }) {
   return (
     <figure className="min-w-0">
@@ -29,6 +55,7 @@ function PhotoBox({ label, punch, name }: { label: string; punch: ShiftPunch | n
         </span>
       )}
       <figcaption className="mt-1 text-xs font-bold text-admin-subtle">{label}</figcaption>
+      {punch && <WhereLine punch={punch} />}
     </figure>
   );
 }
@@ -85,6 +112,7 @@ function HistoryItem({ punch, name }: { punch: ShiftPunch; name: string }) {
           <span className="font-semibold text-admin-subtle">{punch.source}</span>
         </p>
         <p className="text-admin-subtle">{punch.voidReason}</p>
+        <WhereLine punch={punch} />
       </div>
     </li>
   );

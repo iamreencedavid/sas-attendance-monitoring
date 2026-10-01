@@ -50,6 +50,12 @@ async function recordPunch(staffId: string, type: "in" | "out") {
     p_photo_path: `${staffId}/db-check/${type}.jpg`, // never uploaded; the function doesn't read Storage
     p_user_agent: "db-check",
     p_timezone: process.env.SHOP_TIMEZONE || "Asia/Manila",
+    p_ip: "203.177.12.4",
+    p_city: "Quezon City",
+    p_region: "00",
+    p_country: "PH",
+    p_latitude: 14.676,
+    p_longitude: 121.0437,
   });
 }
 
@@ -92,11 +98,12 @@ async function checkPunches(staffId: string) {
     .from("punches")
     .update({ punched_at: new Date(Date.now() - 2 * 60_000).toISOString() })
     .eq("staff_id", staffId);
-  await expectPunchRejected("IN while clocked in", staffId, "in", "already_in");
+  // The one-IN-per-day check runs first, so a second IN today reports in_today.
+  await expectPunchRejected("IN while clocked in", staffId, "in", "in_today");
 
   const { data: row, error: readError } = await supabase
     .from("punches")
-    .select("id, shift_start, shift_end, source, user_agent")
+    .select("id, shift_start, shift_end, source, user_agent, ip_address, geo_city, geo_country")
     .eq("staff_id", staffId)
     .single();
   if (readError) throw new Error(`Reading the punch failed: ${readError.message}`);
@@ -104,6 +111,10 @@ async function checkPunches(staffId: string) {
     throw new Error(`Shift wasn't copied onto the punch (got ${row.shift_start}–${row.shift_end}).`);
   }
   console.log(`✔ Punch row: source=${row.source}, shift copied ${hhmm(row.shift_start)}–${hhmm(row.shift_end)}`);
+  if (row.ip_address !== "203.177.12.4" || row.geo_city !== "Quezon City" || row.geo_country !== "PH") {
+    throw new Error(`Location wasn't stored (got ${row.ip_address}, ${row.geo_city}, ${row.geo_country}).`);
+  }
+  console.log(`✔ Location stored: ${row.geo_city}, ${row.geo_country} · ${row.ip_address}`);
 
   const manual = { staff_id: staffId, type: "out", source: "manual", punched_at: new Date().toISOString() };
   await expectPunchRowRejected("manual punch without a note", manual);
