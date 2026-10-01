@@ -34,7 +34,7 @@ export function PunchResult({ name, type, punchedAt, photoUrl, onDone }: Props) 
             type="button"
             autoFocus
             onClick={onDone}
-            className="mt-3 rounded-full px-4 py-2 text-sm text-muted outline-none focus-visible:ring-4 focus-visible:ring-caramel/30"
+            className="mt-3 rounded-full px-4 py-2 text-sm text-mocha outline-none focus-visible:ring-4 focus-visible:ring-caramel/30"
           >
             Tap anywhere to continue
           </button>

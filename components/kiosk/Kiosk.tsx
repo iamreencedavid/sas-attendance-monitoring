@@ -146,7 +146,7 @@ export function Kiosk({ staff, loadError }: { staff: Staff[]; loadError: boolean
         />
       </main>
 
-      <footer className="px-4 pb-3 text-center text-xs text-muted">
+      <footer className="px-4 pb-3 text-center text-xs text-mocha">
         Photos are taken for attendance only · kept 90 days
       </footer>
 

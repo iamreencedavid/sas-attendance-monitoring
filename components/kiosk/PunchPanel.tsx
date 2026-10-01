@@ -72,7 +72,7 @@ export function PunchPanel({
         </select>
         <p
           aria-live="polite"
-          className={`min-h-5 text-sm ${listMessage ? "font-medium text-punch-out" : "text-muted"}`}
+          className={`min-h-5 text-sm ${listMessage ? "font-medium text-punch-out" : "text-mocha"}`}
         >
           {listMessage ?? statusText}
         </p>
@@ -144,7 +144,7 @@ function PunchButton({
       disabled={disabled}
       onClick={onClick}
       aria-busy={loading}
-      className={`${color} min-h-[72px] rounded-2xl px-3 text-xl font-extrabold tracking-wider text-white shadow-sm outline-none transition active:scale-[0.98] focus-visible:ring-4 disabled:bg-latte disabled:text-muted disabled:shadow-none disabled:active:scale-100 sm:text-2xl lg:text-4xl`}
+      className={`${color} min-h-[72px] rounded-2xl px-3 text-xl font-extrabold tracking-wider text-white shadow-sm outline-none transition active:scale-[0.98] focus-visible:ring-4 disabled:bg-latte disabled:text-mocha disabled:shadow-none disabled:active:scale-100 sm:text-2xl lg:text-4xl`}
     >
       {loading ? "Saving…" : type === "in" ? "PUNCH IN" : "PUNCH OUT"}
     </button>
