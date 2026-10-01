@@ -2,7 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import { isOwner } from "@/lib/auth/owner";
+import { isAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/server";
 import type { ActionState } from "./types";
 import { parsePinForm, parseStaffForm } from "./validation";
@@ -35,7 +35,7 @@ function failed(error: { code?: string }): ActionState {
 }
 
 export async function createStaff(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  if (!(await isOwner())) return NOT_ALLOWED;
+  if (!(await isAdmin())) return NOT_ALLOWED;
   const parsed = parseStaffForm(formData, { withPin: true });
   if (!parsed.ok) return { ok: false, errors: parsed.errors };
 
@@ -55,7 +55,7 @@ export async function createStaff(_prev: ActionState, formData: FormData): Promi
 }
 
 export async function updateStaff(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  if (!(await isOwner())) return NOT_ALLOWED;
+  if (!(await isAdmin())) return NOT_ALLOWED;
   const id = idFrom(formData);
   if (!id) return SAVE_FAILED;
   const parsed = parseStaffForm(formData, { withPin: false });
@@ -78,7 +78,7 @@ export async function updateStaff(_prev: ActionState, formData: FormData): Promi
 
 /** New PIN also clears any lockout, since the old PIN no longer matters. */
 export async function resetStaffPin(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  if (!(await isOwner())) return NOT_ALLOWED;
+  if (!(await isAdmin())) return NOT_ALLOWED;
   const id = idFrom(formData);
   if (!id) return SAVE_FAILED;
   const parsed = parsePinForm(formData);
@@ -96,7 +96,7 @@ export async function resetStaffPin(_prev: ActionState, formData: FormData): Pro
 }
 
 export async function unlockStaff(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  if (!(await isOwner())) return NOT_ALLOWED;
+  if (!(await isAdmin())) return NOT_ALLOWED;
   const id = idFrom(formData);
   if (!id) return SAVE_FAILED;
 
@@ -108,7 +108,7 @@ export async function unlockStaff(_prev: ActionState, formData: FormData): Promi
 }
 
 export async function setStaffActive(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  if (!(await isOwner())) return NOT_ALLOWED;
+  if (!(await isAdmin())) return NOT_ALLOWED;
   const id = idFrom(formData);
   if (!id) return SAVE_FAILED;
   const active = formData.get("active") === "true";

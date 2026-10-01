@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { isOwner } from "@/lib/auth/owner";
+import { isAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/server";
 import { TIME_24H } from "@/lib/staff/validation";
 import { addDays, shopInstant, shopNow } from "@/lib/time";
@@ -51,7 +51,7 @@ async function loadPunch(id: string): Promise<StoredPunch | null> {
  * on its own is written onto the shift's punches.
  */
 export async function updateShift(_prev: ShiftActionState, formData: FormData): Promise<ShiftActionState> {
-  if (!(await isOwner())) return NOT_ALLOWED;
+  if (!(await isAdmin())) return NOT_ALLOWED;
 
   const staffId = str(formData, "staffId");
   const dateKey = str(formData, "dateKey");

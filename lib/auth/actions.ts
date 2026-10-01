@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createSessionClient } from "@/lib/supabase/session";
+import { adminRole } from "./roles";
 
 export type SignInState = { error: string | null; email: string };
 
@@ -18,8 +19,8 @@ export async function signIn(_prev: SignInState, formData: FormData): Promise<Si
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error || !data.user) return { error: WRONG, email };
 
-  // A real account that isn't the owner gets the same answer as a wrong password.
-  if (data.user.app_metadata?.role !== "owner") {
+  // A real account without admin access gets the same answer as a wrong password.
+  if (!adminRole(data.user)) {
     await supabase.auth.signOut();
     return { error: WRONG, email };
   }

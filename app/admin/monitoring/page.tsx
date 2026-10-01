@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { MonitoringFilters } from "@/components/admin/monitoring/MonitoringFilters";
 import { PayrollButton } from "@/components/admin/monitoring/PayrollButton";
 import { ShiftTable } from "@/components/admin/monitoring/ShiftTable";
-import { requireOwner } from "@/lib/auth/owner";
+import { requireAdmin } from "@/lib/auth/admin";
 import { getShifts } from "@/lib/monitoring/queries";
 import type { ShiftRow } from "@/lib/monitoring/types";
 import { getAllStaff } from "@/lib/staff/queries";
@@ -18,7 +18,7 @@ function param(value: string | string[] | undefined): string {
 
 export default async function MonitoringPage({ searchParams }: PageProps<"/admin/monitoring">) {
   // Layouts don't re-run on client navigation, so the page checks too.
-  await requireOwner();
+  await requireAdmin();
   await connection();
 
   const params = await searchParams;

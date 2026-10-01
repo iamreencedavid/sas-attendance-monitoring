@@ -1,11 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { adminRole } from "@/lib/auth/roles";
 
 /**
- * Refreshes the owner's Supabase session cookies and does the optimistic
- * redirects: /admin without a session → /login, /login as the owner → /admin.
+ * Refreshes the signed-in admin's Supabase session cookies and does the optimistic
+ * redirects: /admin without a session → /login, /login as an admin → /admin.
  * This is not the security boundary. Every /admin page and Server Action
- * checks isOwner() itself. The kiosk (/) never goes through here.
+ * checks isAdmin() itself. The kiosk (/) never goes through here.
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -28,13 +29,13 @@ export async function proxy(request: NextRequest) {
   });
 
   const { data } = await supabase.auth.getUser();
-  const isOwner = data.user?.app_metadata?.role === "owner";
+  const canUseAdmin = adminRole(data.user) !== null;
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/admin") && !data.user) {
     return redirectKeepingCookies(request, response, "/login");
   }
-  if (pathname === "/login" && isOwner) {
+  if (pathname === "/login" && canUseAdmin) {
     return redirectKeepingCookies(request, response, "/admin");
   }
   return response;

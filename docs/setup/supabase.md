@@ -114,9 +114,9 @@ It's safe to run the seeder again. Anyone who already exists (an active staff me
 
 Then run `npm run db:seed` again.
 
-## 8. Owner login
+## 8. Owner and admin logins
 
-Only the owner signs in, at `/login`, with an email and password (Supabase Auth). The app lets a user into `/admin` only if their account is tagged `app_metadata.role = 'owner'`, and only the secret key can set that tag.
+The owner and any admins sign in at `/login` with an email and password (Supabase Auth). The app lets a user into `/admin` only if their account is tagged `app_metadata.role` = `owner` or `admin`, and only the secret key can set that tag.
 
 1. In the dashboard, open **Authentication → Sign In / Providers** and turn off **Allow new users to sign up**. Then nobody can create an account with the publishable key.
 2. Add the owner's login to `.env.local`:
@@ -130,6 +130,8 @@ Only the owner signs in, at `/login`, with an email and password (Supabase Auth)
    ```
    Expected output: `✔ Created owner account owner@example.com.` If the account already exists, the script sets the new password and the owner tag instead, so it's also how you change the password.
 4. Remove `OWNER_PASSWORD` from `.env.local` if you don't want it kept on disk.
+
+To give other people a login, sign in and use **Users** in the admin sidebar. They get full admin access, but nobody can edit or remove the owner account from the app. Use `npm run db:owner` for that.
 
 On Vercel, `/admin` needs the same `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` variables. `OWNER_*` are only for the script.
 

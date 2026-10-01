@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { requireOwner } from "@/lib/auth/owner";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const metadata: Metadata = {
   title: "Admin · Sip and Simple",
@@ -8,11 +8,11 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
-  const email = await requireOwner();
+  const admin = await requireAdmin();
 
   return (
     <div className="flex min-h-dvh flex-1 bg-admin-paper font-admin text-admin-slate">
-      <AdminShell ownerEmail={email}>{children}</AdminShell>
+      <AdminShell adminEmail={admin.email}>{children}</AdminShell>
     </div>
   );
 }

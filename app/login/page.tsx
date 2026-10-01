@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/auth/LoginForm";
-import { isOwner } from "@/lib/auth/owner";
+import { isAdmin } from "@/lib/auth/admin";
 
 export const metadata: Metadata = {
   title: "Sign in · Sip and Simple",
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function LoginPage() {
-  if (await isOwner()) redirect("/admin");
+  if (await isAdmin()) redirect("/admin");
 
   return (
     <main className="flex flex-1 items-center justify-center bg-cream px-4 py-10 text-espresso">
@@ -19,7 +19,7 @@ export default async function LoginPage() {
             ☕
           </p>
           <h1 className="mt-2 text-2xl font-extrabold tracking-tight">Sip and Simple</h1>
-          <p className="mt-1 text-sm text-mocha">Owner sign in</p>
+          <p className="mt-1 text-sm text-mocha">Admin sign in</p>
         </div>
         <LoginForm />
       </div>

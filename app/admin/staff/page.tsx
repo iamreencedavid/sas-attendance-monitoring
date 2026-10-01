@@ -1,12 +1,12 @@
 import { connection } from "next/server";
 import { StaffTable } from "@/components/admin/staff/StaffTable";
-import { requireOwner } from "@/lib/auth/owner";
+import { requireAdmin } from "@/lib/auth/admin";
 import { getAllStaff } from "@/lib/staff/queries";
 import type { StaffRecord } from "@/lib/staff/types";
 
 export default async function StaffPage() {
   // Layouts don't re-run on client navigation, so the page checks too.
-  await requireOwner();
+  await requireAdmin();
   await connection();
 
   let staff: StaffRecord[];
