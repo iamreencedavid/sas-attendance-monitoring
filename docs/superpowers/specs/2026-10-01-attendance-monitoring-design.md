@@ -1,8 +1,8 @@
-# PRD: SAS Coffee Attendance Monitoring
+# PRD: Sip and Simple Attendance Monitoring
 
 | | |
 |---|---|
-| **Status** | Draft, awaiting owner review |
+| **Status** | Draft v2: punch page open, no kiosk login |
 | **Date** | 2026-10-01 |
 | **Author** | Reence David (with Claude) |
 | **Repo** | `sas-attendance-monitoring` (Next.js 16.3 scaffold) |
@@ -11,7 +11,7 @@
 
 ## 1. Summary
 
-SAS Coffee needs a simple, reliable way to record when each staff member starts and ends a shift. There are 5+ staff. A shared tablet at the counter runs a single **kiosk page**. A staff member picks their name, enters a PIN, and taps **PUNCH IN** or **PUNCH OUT**. The camera captures a photo at that moment, and the punch is saved only after the photo uploads. The owner signs in on a separate **login page** to review records with photo thumbnails, see hours worked, manage staff, and export CSV.
+Sip and Simple needs a simple, reliable way to record when each staff member starts and ends a shift. There are 5+ staff. A single **punch page** is open to staff with **no login**. They usually use the counter tablet, but any browser works. A staff member picks their name, enters a PIN, and taps **PUNCH IN** or **PUNCH OUT**. The camera captures a photo at that moment, and the punch is saved only after the photo uploads. Only the owner signs in, on a separate **login page**, to review records with photo thumbnails, see hours worked, manage staff, and export CSV.
 
 The photo is **proof of presence** that stops "buddy punching" (someone clocking in for an absent coworker). It is not face recognition.
 
@@ -36,7 +36,7 @@ The photo is **proof of presence** that stops "buddy punching" (someone clocking
 | Persona | Device | Needs |
 |---|---|---|
 | **Staff** (barista, cashier) | Shared counter tablet | Punch in/out fast, with hands possibly busy, and no account to remember beyond a PIN |
-| **Owner** | Own phone or laptop, plus the tablet once for setup | Trust the records, see hours, fix mistakes, add or remove staff |
+| **Owner** | Own phone or laptop | Trust the records, see hours, fix mistakes, add or remove staff |
 
 ## 4. Assumptions
 
@@ -44,7 +44,8 @@ The photo is **proof of presence** that stops "buddy punching" (someone clocking
 - The **server clock is the source of truth** for punch times. The tablet's clock is never trusted.
 - Shop timezone is set with an env var (`SHOP_TIMEZONE`, an IANA name such as `Asia/Manila`). All "day" groupings use it.
 - Shifts may cross midnight. A punch pair counts toward the day of the IN punch.
-- The kiosk tablet has a front camera and a modern browser (Chrome/Safari) served over HTTPS.
+- The counter tablet has a front camera and a modern browser (Chrome/Safari) served over HTTPS.
+- **The punch page is public.** Identity is the selected name + PIN, and the photo is the evidence. Anyone with the URL can open it.
 
 ## 5. Tech stack
 
@@ -59,7 +60,6 @@ The photo is **proof of presence** that stops "buddy punching" (someone clocking
 | DB access | `@supabase/supabase-js` with generated types (`supabase gen types`) |
 | Migrations | Supabase CLI SQL migrations in `supabase/migrations/` |
 | PIN hashing | `bcryptjs` (pure JS, no native build step) |
-| Kiosk cookie signing | `jose` (HS256 JWT) |
 | Hosting | Vercel (Hobby) + Supabase (Free) |
 | Tests | Vitest (unit), Playwright (e2e with fake camera) |
 
@@ -71,7 +71,7 @@ They don't really compete. Prisma is an **ORM**: it gives you a typed query laye
 
 - **Photo blobs** need object storage. With Prisma you'd still need S3, R2, or Vercel Blob, plus a separate auth library. That means three vendors instead of one.
 - **Owner login** comes ready-made with Supabase Auth.
-- **Schema is tiny** (4 tables), so the generated Supabase types give enough type safety without a second schema language.
+- **Schema is tiny** (2 tables), so the generated Supabase types give enough type safety without a second schema language.
 - **Free tier** (500 MB DB, 1 GB storage) easily covers a single shop. See §11 for the storage maths.
 
 **When to add Prisma later:** if reporting queries become complex, or if you want Prisma's migration workflow. Prisma can sit on top of the same Supabase Postgres, so this choice is reversible.
@@ -80,14 +80,13 @@ They don't really compete. Prisma is an **ORM**: it gives you a typed query laye
 
 | Route | Who | Purpose |
 |---|---|---|
-| `/` | Kiosk device | **Kiosk punch page** (the single staff-facing page). Requires a valid kiosk cookie; otherwise redirects to `/login`. |
+| `/` | **Public** | **Punch page** (the single staff-facing page). No login and no redirect. Staff pick their name and enter their PIN. |
 | `/login` | Owner | Email/password sign-in |
 | `/admin` | Owner | Punch records, hours, CSV export |
 | `/admin/staff` | Owner | Add, edit, deactivate staff; reset PINs |
-| `/admin/kiosk` | Owner | "Use this device as kiosk"; list and revoke kiosk devices |
 | `/api/export` | Owner | CSV download (Route Handler) |
 
-`proxy.ts` (Next 16's replacement for `middleware.ts`) does fast redirects for missing cookies only. **Every Server Action and Route Handler checks auth itself**, because proxy is not a security boundary.
+`proxy.ts` (Next 16's replacement for `middleware.ts`) only redirects requests to `/admin/*` without an owner session to `/login`. It never touches `/`. **Every Server Action and Route Handler checks auth itself**, because proxy is not a security boundary.
 
 ## 7. Kiosk page (Layout A, chosen)
 
@@ -95,7 +94,7 @@ They don't really compete. Prisma is an **ORM**: it gives you a typed query laye
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ ☕ SAS COFFEE                              Wed, Oct 1 · 07:58 AM │
+│ ☕ SIP AND SIMPLE                          Wed, Oct 1 · 07:58 AM │
 ├──────────────────────────────────────────┬───────────────────────┤
 │                                          │  Name   [ Maria    ▾] │
 │                                          │  PIN    [ ● ● ● ●   ] │
@@ -126,7 +125,7 @@ They don't really compete. Prisma is an **ORM**: it gives you a typed query laye
 4. Staff taps the enabled **PUNCH IN/OUT** button.
 5. Client **captures a frame**: it draws the `<video>` frame to a `<canvas>` scaled to a max width of 640px, then calls `canvas.toBlob(cb, "image/jpeg", 0.7)`. The result is a ~40–80 KB **JPEG Blob**, never base64.
 6. Client sends `FormData { staffId, pin, type, photo: Blob }` to the `punch` Server Action.
-7. Server (details in §8.3) verifies the kiosk, PIN, and state, uploads the blob, and inserts the punch.
+7. Server (details in §8.3) verifies the PIN and state, uploads the blob, and inserts the punch.
 8. **Success screen** for 3s: the captured photo, "✅ Maria — IN at 7:58 AM", and a short sound. The page then resets to idle and clears the name and PIN.
 9. **Failure**: a clear inline message (see §10), with the name kept and the PIN cleared.
 
@@ -147,13 +146,6 @@ create table staff (
   created_at       timestamptz not null default now()
 );
 
-create table kiosk_devices (
-  id          uuid primary key default gen_random_uuid(),
-  label       text not null,             -- e.g. "Counter iPad"
-  created_at  timestamptz not null default now(),
-  revoked_at  timestamptz
-);
-
 create type punch_type   as enum ('in', 'out');
 create type punch_source as enum ('kiosk', 'manual');
 
@@ -165,7 +157,7 @@ create table punches (
   photo_path  text,                      -- null when manual, or after retention purge
   photo_purged_at timestamptz,           -- set by the retention job
   source      punch_source not null default 'kiosk',
-  device_id   uuid references kiosk_devices(id),
+  user_agent  text,                      -- browser that punched, for owner audit
   note        text,                      -- required when source = 'manual'
   created_at  timestamptz not null default now(),
   constraint photo_required check (
@@ -177,29 +169,29 @@ create index punches_staff_time on punches (staff_id, punched_at desc);
 create index punches_time       on punches (punched_at desc);
 ```
 
-**RLS is enabled on every table with no policies**, so the anon key can read or write nothing. All data access goes through server code using the **service-role key**, which is never sent to the browser, after the server has checked the owner session or kiosk cookie.
+**RLS is enabled on every table with no policies**, so the anon key can read or write nothing. All data access goes through server code using the **service-role key**, which is never sent to the browser, after the server has checked the owner session (admin pages) or the PIN (punch).
 
 **Storage:** private bucket `punch-photos`, object key `{staffId}/{yyyy-mm-dd}/{punchId}.jpg` (date in shop timezone). It has no public access. The owner views photos through **signed URLs** that last 1 hour, generated in batches with `createSignedUrls`.
 
-### 8.2 Kiosk device auth
+### 8.2 Punch page access
 
-1. The owner signs in on the tablet, opens `/admin/kiosk`, and taps **"Use this device as kiosk"**, giving it a label.
-2. The server inserts a `kiosk_devices` row and sets a cookie `kiosk` = signed JWT `{ deviceId }`. The cookie is httpOnly, Secure, SameSite=Lax, and lasts 1 year.
-3. The server then **signs the owner out** on that device and redirects to `/`. Staff therefore can never reach `/admin` from the kiosk.
-4. Each kiosk action checks the JWT signature **and** that the device has `revoked_at is null`. The owner can revoke a lost tablet from `/admin/kiosk`.
+- `/` needs **no login, cookie, or device setup**. Staff open the URL, pick their name, and enter their PIN.
+- The page loads the list of active staff on the server, sending **only `id` and `name`** to the browser, never PIN hashes or lock state.
+- The **PIN is the identity check**. The per-staff lockout (5 failures → 5 min, §8.3) stops PIN guessing, including from outside the shop.
+- The page sets `robots: { index: false }` metadata so search engines don't list it.
+- The owner's `/admin` pages are separate and always need the owner session.
 
 ### 8.3 `punch` Server Action, step by step
 
-1. Verify the kiosk cookie. If it's invalid, return an error (no detail).
-2. Validate the input: `staffId` is a uuid, `type` is in/out, `pin` is 4–6 digits, and `photo` is a Blob that is ≤ 500 KB and `image/jpeg`, with JPEG magic bytes `FF D8 FF`.
-3. Load the staff member. They must be `active`. If `locked_until > now()`, return "Too many attempts, try again in N min".
-4. `bcrypt.compare(pin, pin_hash)`. On failure, increment `failed_pin_count`; at **5 failures**, set `locked_until = now() + 5 min`. On success, reset the count.
-5. **State check**: the last punch's type must be the opposite of `type` (no prior punch means only `in` is allowed). **Exception:** if the last punch is an IN older than **16h** (a forgotten OUT), the person counts as clocked out, so `in` is allowed and the old shift is flagged "missing OUT" in admin. Reject if the last punch was under **60s** ago (double tap).
-6. Generate `punchId`, then **upload the blob** to Storage with the service role.
-7. **Insert the punch row** with `punched_at = now()` (DB clock). If the insert fails, **delete the uploaded object** so there are no orphans.
-8. Return `{ name, type, punchedAt }`.
+1. Validate the input: `staffId` is a uuid, `type` is in/out, `pin` is 4–6 digits, and `photo` is a Blob that is ≤ 500 KB and `image/jpeg`, with JPEG magic bytes `FF D8 FF`.
+2. Load the staff member. They must be `active`. If `locked_until > now()`, return "Too many attempts, try again in N min".
+3. `bcrypt.compare(pin, pin_hash)`. On failure, increment `failed_pin_count`; at **5 failures**, set `locked_until = now() + 5 min`. On success, reset the count.
+4. **State check**: the last punch's type must be the opposite of `type` (no prior punch means only `in` is allowed). **Exception:** if the last punch is an IN older than **16h** (a forgotten OUT), the person counts as clocked out, so `in` is allowed and the old shift is flagged "missing OUT" in admin. Reject if the last punch was under **60s** ago (double tap).
+5. Generate `punchId`, then **upload the blob** to Storage with the service role.
+6. **Insert the punch row** with `punched_at = now()` (DB clock) and the request's `user_agent`. If the insert fails, **delete the uploaded object** so there are no orphans.
+7. Return `{ name, type, punchedAt }`.
 
-Steps 5–7 must not race when the same person double-taps. A per-staff advisory lock (`pg_advisory_xact_lock`) inside a small SQL function `record_punch(...)` handles this: it re-checks the state and inserts in one transaction, and the upload happens just before the call.
+Steps 4–6 must not race when the same person double-taps. A per-staff advisory lock (`pg_advisory_xact_lock`) inside a small SQL function `record_punch(...)` handles this: it re-checks the state and inserts in one transaction, and the upload happens just before the call.
 
 Photo size is far below Next's default **1 MB Server Action body limit**, so no config change is needed.
 
@@ -224,7 +216,7 @@ Photo size is far below Next's default **1 MB Server Action body limit**, so no 
 │                                      │
 │          ┌──────────────────┐        │
 │          │        ☕         │        │
-│          │    SAS Coffee    │        │
+│          │  Sip and Simple  │        │
 │          │  Owner sign in   │        │
 │          │                  │        │
 │          │ Email            │        │
@@ -253,7 +245,6 @@ app/
   admin/layout.tsx          # owner guard
   admin/page.tsx            # records
   admin/staff/page.tsx
-  admin/kiosk/page.tsx
   api/export/route.ts
 components/kiosk/
   CameraPreview.tsx         # getUserMedia + capture() → Blob
@@ -262,12 +253,11 @@ components/kiosk/
 lib/
   supabase/server.ts        # service-role client (server-only)
   supabase/ssr.ts           # owner session client (@supabase/ssr)
-  auth/kiosk.ts             # sign/verify kiosk JWT, device check
   auth/owner.ts             # requireOwner()
   punch/rules.ts            # pure: nextAllowedType(), isDoubleTap(), pairShifts()
   punch/actions.ts          # 'use server' punch()
   time.ts                   # SHOP_TIMEZONE helpers
-proxy.ts
+proxy.ts                    # /admin/* → /login when no owner session
 supabase/migrations/
 ```
 
@@ -285,7 +275,6 @@ supabase/migrations/
 | Photo upload fails | "Couldn't save photo, tap to retry." No row is written. |
 | Row insert fails after upload | The object is deleted and a generic error is shown with retry. |
 | Network offline | Banner "No internet: punches unavailable", with buttons disabled. Staff tell the owner, who adds a manual correction. |
-| Kiosk cookie invalid or revoked | Redirect to `/login`. |
 | Forgot to punch out | Flagged in admin after 16h. The owner adds a manual OUT with a note. |
 
 ## 11. Privacy, security, and retention
@@ -293,12 +282,13 @@ supabase/migrations/
 - A notice on the kiosk footer reads "Photos are taken for attendance only · kept 90 days". The owner should tell staff in writing, per local privacy law.
 - **Photo retention: 90 days** (`PHOTO_RETENTION_DAYS`). A daily job (Vercel Cron → Route Handler protected by `CRON_SECRET`) deletes older objects and sets `photo_path = null, photo_purged_at = now()`. The `photo_required` check allows this. Punch rows are kept indefinitely for payroll history, and the admin shows "photo expired" in place of the thumbnail.
 - Storage maths: 15 staff × 2 punches × 30 days × ~60 KB ≈ **54 MB/month**, or about 160 MB at 90-day retention. That's well within the 1 GB free tier.
-- Secrets: `SUPABASE_SERVICE_ROLE_KEY`, `KIOSK_JWT_SECRET`, and `CRON_SECRET` are server-only env vars and never `NEXT_PUBLIC_`.
+- Secrets: `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` are server-only env vars and never `NEXT_PUBLIC_`.
 - PINs are only ever stored as bcrypt hashes (cost 10). The owner cannot view a PIN, only reset it.
+- **Open punch page:** because `/` is public, a punch from outside the shop is possible. The owner spots it through the photo (and `user_agent`) in `/admin`. If this becomes a problem, a later step can accept punches only from the shop's Wi-Fi (an IP allowlist).
 
 ## 12. Testing
 
-- **Unit (Vitest):** `rules.ts`, covering next allowed type, double-tap window, shift pairing across midnight, missing-OUT detection, and hours sums. Also `kiosk.ts` sign/verify and PIN lockout logic.
+- **Unit (Vitest):** `rules.ts`, covering next allowed type, double-tap window, shift pairing across midnight, missing-OUT detection, and hours sums. Also the PIN lockout logic.
 - **E2E (Playwright):** Chromium with `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream` against a local Supabase (`supabase start`).
   - Kiosk happy path: IN, then OUT, and both rows and photos exist.
   - Wrong PIN, then lockout.
@@ -316,9 +306,9 @@ supabase/migrations/
 
 1. **Foundation:** Supabase project, migrations, types, env, Tailwind tokens.
 2. **Owner auth + staff management:** `/login` (L1), `/admin/staff`.
-3. **Kiosk:** device enrolment, camera capture, `punch` action, Layout A UI.
+3. **Punch page:** camera capture, `punch` action, Layout A UI.
 4. **Records:** `/admin` table, thumbnails, hours, corrections, CSV.
-5. **Hardening:** retention cron, e2e tests, deploy to Vercel, enrol the counter tablet.
+5. **Hardening:** retention cron, e2e tests, deploy to Vercel, open the punch page on the counter tablet.
 
 ---
 
@@ -335,3 +325,7 @@ Five kiosk layouts were mocked up as tablet-landscape wireframes. **A was chosen
 | E | Clock-centric idle screen with one giant PUNCH button | Least feedback about who is punching |
 
 Login: **L1 (centered card)** was chosen over L2 (split brand panel + form).
+
+## Changelog
+
+- **v2 (2026-10-01):** the punch page is open to staff with no login or kiosk enrolment, and the PIN is kept. Removed the kiosk cookie, `kiosk_devices` and `/admin/kiosk`. Renamed to Sip and Simple.
