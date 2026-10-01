@@ -114,6 +114,25 @@ It's safe to run the seeder again. Anyone who already exists (an active staff me
 
 Then run `npm run db:seed` again.
 
+## 8. Owner login
+
+Only the owner signs in, at `/login`, with an email and password (Supabase Auth). The app lets a user into `/admin` only if their account is tagged `app_metadata.role = 'owner'`, and only the secret key can set that tag.
+
+1. In the dashboard, open **Authentication → Sign In / Providers** and turn off **Allow new users to sign up**. Then nobody can create an account with the publishable key.
+2. Add the owner's login to `.env.local`:
+   ```
+   OWNER_EMAIL=owner@example.com
+   OWNER_PASSWORD=<at least 8 characters>
+   ```
+3. Run:
+   ```bash
+   npm run db:owner
+   ```
+   Expected output: `✔ Created owner account owner@example.com.` If the account already exists, the script sets the new password and the owner tag instead, so it's also how you change the password.
+4. Remove `OWNER_PASSWORD` from `.env.local` if you don't want it kept on disk.
+
+On Vercel, `/admin` needs the same `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` variables. `OWNER_*` are only for the script.
+
 ## Troubleshooting
 
 | Message | Fix |
@@ -123,6 +142,7 @@ Then run `npm run db:seed` again.
 | `The key was rejected` | Use the **secret** key (`sb_secret_…`), not the publishable one. |
 | `Cannot find project ref` on `db:push` | Run the link command from step 4. |
 | `set SEED_PIN_ANGELIE=<4–6 digits>` | Add that PIN variable to `.env.local` (step 7). |
+| "Email or password is incorrect" for the owner | Run `npm run db:owner` again (step 8). It resets the password and the owner tag. |
 
 ## Adding schema changes later
 

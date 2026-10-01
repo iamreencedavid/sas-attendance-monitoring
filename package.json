@@ -10,10 +10,12 @@
     "db:push": "supabase db push",
     "db:check": "node --env-file-if-exists=.env.local scripts/db-check.mts",
     "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.mts",
-    "db:mock": "node --env-file-if-exists=.env.local scripts/db-mock.mts"
+    "db:mock": "node --env-file-if-exists=.env.local scripts/db-mock.mts",
+    "db:owner": "node --env-file-if-exists=.env.local scripts/db-owner.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

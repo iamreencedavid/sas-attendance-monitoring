@@ -1,13 +1,12 @@
-import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { DashboardGrid } from "@/components/admin/dashboard/DashboardGrid";
-import { isOwner } from "@/lib/auth/owner";
+import { requireOwner } from "@/lib/auth/owner";
 import { getTodayBoard } from "@/lib/dashboard/queries";
 import type { TodayBoard } from "@/lib/dashboard/types";
 
 export default async function DashboardPage() {
   // Layouts don't re-run on client navigation, so the page checks too.
-  if (!(await isOwner())) notFound();
+  await requireOwner();
   await connection();
 
   let board: TodayBoard;
