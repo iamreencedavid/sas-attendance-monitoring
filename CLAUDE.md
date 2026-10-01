@@ -1,1 +1,34 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 @AGENTS.md
+
+## Project state
+
+Sip and Simple attendance monitoring app. The spec is `docs/superpowers/specs/2026-10-01-attendance-monitoring-design.md`.
+
+- `/` is the public punch page (components in `components/kiosk/`). It still runs on mock data from `lib/punch/mock.ts`.
+- Supabase (cloud) is connected for the `staff` table only. Migrations live in `supabase/migrations/`, and the setup steps are in `docs/setup/supabase.md`.
+- Not built yet: punches table, photo storage, owner auth, `/admin`, and a test runner. Update this file as those pieces land.
+
+## Commands
+
+- `npm run dev`: dev server at http://localhost:3000 (also rewrites the managed block in `AGENTS.md`)
+- `npm run build`: production build, which also type-checks
+- `npm run start`: serve the production build
+- `npm run lint`: ESLint 9 flat config (`eslint.config.mjs`, Next core-web-vitals + TypeScript presets)
+- `npx tsc --noEmit`: standalone type check
+- `npm run db:push`: apply new `supabase/migrations/*.sql` to the linked Supabase project
+- `npm run db:check`: Supabase smoke test (inserts, reads and deletes a test staff row; needs `.env.local`, see `.env.example`)
+
+There is no test runner configured yet. `db:check` is the only database check.
+
+## Stack and conventions
+
+- **Next.js 16.3 App Router with React 19.2.** APIs differ from older Next versions. Check the bundled docs in `node_modules/next/dist/docs/01-app/` (getting-started, guides, api-reference) before using any Next API. Don't rely on memory.
+- **Typed route helpers are global.** For example, `app/layout.tsx` uses `LayoutProps<"/">` without importing it. These types are generated into `.next/types` / `.next/dev/types` by `next dev`/`next build`.
+- **Tailwind CSS v4** via `@tailwindcss/postcss`. There is no `tailwind.config.*`. Theme tokens are declared in CSS with `@theme inline` in `app/globals.css`. Light and dark colors come from the `--background`/`--foreground` CSS variables, which switch on `prefers-color-scheme`.
+- Fonts (Geist / Geist Mono) are loaded with `next/font/google` in the root layout and exposed as CSS variables.
+- Import alias: `@/*` maps to the repo root (not `src/`).
+- TypeScript `strict` mode is on.

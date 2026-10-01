@@ -136,15 +136,22 @@ Auto-reset: if a name is selected but nothing happens for 30s, the page returns 
 ### 8.1 Data model (Postgres)
 
 ```sql
+create type staff_role as enum ('barista', 'kitchen', 'supervisor');
+
 create table staff (
   id               uuid primary key default gen_random_uuid(),
-  name             text not null,
+  name             text not null check (char_length(btrim(name)) between 1 and 60),
+  role             staff_role not null,
+  shift_start      time not null,          -- 24h, e.g. 06:00
+  shift_end        time not null,          -- may be < start (overnight shift)
   pin_hash         text not null,
   active           boolean not null default true,
-  failed_pin_count int not null default 0,
+  failed_pin_count int not null default 0 check (failed_pin_count >= 0),
   locked_until     timestamptz,
-  created_at       timestamptz not null default now()
+  created_at       timestamptz not null default now(),
+  constraint staff_shift_not_empty check (shift_start <> shift_end)
 );
+create unique index staff_active_name_key on staff (lower(btrim(name))) where active;
 
 create type punch_type   as enum ('in', 'out');
 create type punch_source as enum ('kiosk', 'manual');
@@ -168,6 +175,8 @@ create table punches (
 create index punches_staff_time on punches (staff_id, punched_at desc);
 create index punches_time       on punches (punched_at desc);
 ```
+
+**Staff shift** (`shift_start`–`shift_end`, 24h) is one fixed shift per person and is reference info only in v1. Late and overtime rules remain a non-goal (§2). Each table is created by a Supabase CLI migration in `supabase/migrations/` (setup: `docs/setup/supabase.md`).
 
 **RLS is enabled on every table with no policies**, so the anon key can read or write nothing. All data access goes through server code using the **service-role key**, which is never sent to the browser, after the server has checked the owner session (admin pages) or the PIN (punch).
 
@@ -329,3 +338,4 @@ Login: **L1 (centered card)** was chosen over L2 (split brand panel + form).
 ## Changelog
 
 - **v2 (2026-10-01):** the punch page is open to staff with no login or kiosk enrolment, and the PIN is kept. Removed the kiosk cookie, `kiosk_devices` and `/admin/kiosk`. Renamed to Sip and Simple.
+- **v3 (2026-10-01):** `staff` gains `role` (barista, kitchen, supervisor) and a fixed 24h shift (`shift_start`, `shift_end`), plus a unique active name. The first migration is applied with the Supabase CLI.
