@@ -13,11 +13,11 @@ export type LastPunch = {
   punchedAt: Date;
 };
 
-export type PunchInput = {
-  staffId: string;
-  pin: string;
-  type: PunchType;
-  photo: Blob;
+/** What the kiosk needs when a name is picked. */
+export type PunchState = {
+  last: LastPunch | null;
+  /** Time of today's counted IN (shop date), or null. */
+  inToday: Date | null;
 };
 
 export type PunchResult =

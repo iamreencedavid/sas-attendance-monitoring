@@ -19,9 +19,13 @@ export function isStaleIn(last: LastPunch | null, now: Date): boolean {
   );
 }
 
-export function nextAllowedType(last: LastPunch | null, now: Date): PunchType {
-  if (!last || last.type === "out" || isStaleIn(last, now)) return "in";
-  return "out";
+/**
+ * The one button that may be used next, or null when the person is done for
+ * the day: only one IN per shop date (`inToday` = a counted IN today).
+ */
+export function nextAllowedType(last: LastPunch | null, now: Date, inToday: boolean): PunchType | null {
+  if (last?.type === "in" && !isStaleIn(last, now)) return "out";
+  return inToday ? null : "in";
 }
 
 export function isDoubleTap(last: LastPunch | null, now: Date): boolean {

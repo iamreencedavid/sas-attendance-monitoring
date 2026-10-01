@@ -4,7 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
-const NAV = [{ href: "/admin/staff", label: "Staff" }];
+const NAV = [
+  { href: "/admin/dashboard", label: "Dashboard" },
+  { href: "/admin/staff", label: "Staff" },
+];
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -34,7 +37,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       </ul>
       <div className="mt-auto space-y-2 px-2.5 text-xs text-admin-subtle">
         <p className="inline-block rounded bg-roast-light px-1.5 py-0.5 font-bold text-roast-light-ink">
-          Development only
+          No login yet
         </p>
         <p>Owner view</p>
       </div>

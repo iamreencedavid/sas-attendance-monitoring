@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getLastPunch, submitPunch } from "@/lib/punch/local";
+import { getPunchState, punch as savePunch } from "@/lib/punch/actions";
 import { isStaleIn, nextAllowedType, PIN_PATTERN } from "@/lib/punch/rules";
-import type { LastPunch, PunchType, Staff } from "@/lib/punch/types";
+import type { PunchState, PunchType, Staff } from "@/lib/punch/types";
 import { CameraPreview, type CameraHandle, type CameraStatus } from "./CameraPreview";
 import { KioskHeader } from "./KioskHeader";
 import { PunchPanel } from "./PunchPanel";
@@ -15,7 +15,8 @@ const IDLE_RESET_MS = 30_000;
 type Selection = {
   staffId: string;
   name: string;
-  allowedType: PunchType;
+  /** null while the last punch is loading. */
+  allowedType: PunchType | null;
   statusText: string;
 };
 
@@ -30,7 +31,12 @@ function formatTime(date: Date) {
   return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-function describeStatus(last: LastPunch | null, now: Date): string {
+function describeStatus({ last, inToday }: PunchState, now: Date): string {
+  if (nextAllowedType(last, now, !!inToday) === null) {
+    return last?.type === "out" && inToday
+      ? `Done for today: in at ${formatTime(inToday)}, out at ${formatTime(last.punchedAt)}. You can punch in again tomorrow.`
+      : "You've already punched in today. You can punch in again tomorrow.";
+  }
   if (!last) return "No punches yet. Ready to punch in.";
   if (isStaleIn(last, now)) {
     return `Missing punch-out from ${last.punchedAt.toLocaleDateString()}. Punch in to start a new shift.`;
@@ -67,14 +73,28 @@ export function Kiosk({ staff, loadError }: { staff: Staff[]; loadError: boolean
       setSelection(null);
       return;
     }
-    const now = new Date();
-    const last = getLastPunch(staffId);
-    setSelection({
-      staffId,
-      name: person.name,
-      allowedType: nextAllowedType(last, now),
-      statusText: describeStatus(last, now),
-    });
+    setSelection({ staffId, name: person.name, allowedType: null, statusText: "Checking your status…" });
+    getPunchState(staffId)
+      .then((state) => {
+        const now = new Date();
+        // Ignore a late answer if someone else was picked meanwhile.
+        setSelection((current) =>
+          current?.staffId === staffId
+            ? {
+                ...current,
+                allowedType: nextAllowedType(state.last, now, !!state.inToday),
+                statusText: describeStatus(state, now),
+              }
+            : current,
+        );
+      })
+      .catch(() => {
+        setSelection((current) =>
+          current?.staffId === staffId
+            ? { ...current, statusText: "Couldn't check your status. Pick your name again." }
+            : current,
+        );
+      });
   }
 
   async function punch(type: PunchType) {
@@ -90,10 +110,12 @@ export function Kiosk({ staff, loadError }: { staff: Staff[]; loadError: boolean
     try {
       const photo = await cameraRef.current!.capture();
       photoUrl = URL.createObjectURL(photo);
-      const result = await submitPunch(
-        { staffId: selection.staffId, pin, type, photo },
-        selection.name,
-      );
+      const form = new FormData();
+      form.set("staffId", selection.staffId);
+      form.set("pin", pin);
+      form.set("type", type);
+      form.set("photo", photo, "punch.jpg");
+      const result = await savePunch(form);
       if (result.ok) {
         setSuccess({ name: result.name, type: result.type, punchedAt: result.punchedAt, photoUrl });
         photoUrl = null; // ownership moves to the success overlay

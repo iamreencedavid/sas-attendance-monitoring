@@ -8,10 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Sip and Simple attendance monitoring app. The spec is `docs/superpowers/specs/2026-10-01-attendance-monitoring-design.md`.
 
-- `/` is the public punch page (components in `components/kiosk/`). The staff dropdown comes from Supabase (`lib/staff/queries.ts`), and the PIN is checked on the server (`lib/punch/actions.ts`). IN/OUT history is still kept in browser memory (`lib/punch/local.ts`).
-- Supabase (cloud) is connected for the `staff` table only. The secret-key client is `lib/supabase/server.ts` (server-only). Migrations live in `supabase/migrations/`, and the setup steps are in `docs/setup/supabase.md`.
+- `/` is the public punch page (components in `components/kiosk/`). The staff dropdown comes from Supabase (`lib/staff/queries.ts`). Punching goes through the `punch` Server Action (`lib/punch/actions.ts`): PIN check, photo upload to the private `punch-photos` bucket, then the `record_punch` SQL function (per-staff advisory lock, double-tap and IN/OUT state checks, and **one IN per shop date**: after IN + OUT both kiosk buttons are locked until tomorrow).
+- Supabase (cloud) has the `staff` and `punches` tables and the `punch-photos` bucket. Punches are never deleted: mistakes are voided (`voided_at` + `void_reason`), missing ones are added as `source='manual'` with a note, and every punch copies the staff shift at insert. The secret-key client is `lib/supabase/server.ts` (server-only). Migrations live in `supabase/migrations/`, and the setup steps are in `docs/setup/supabase.md`.
 - `/admin/staff` is the owner's staff page (Roast Scale table + right-side `<dialog>` drawer, `components/admin/`, Server Actions in `lib/staff/actions.ts`). There is no login yet, and `lib/auth/owner.ts` currently allows everyone (open in production by owner choice) until owner auth lands.
-- Not built yet: punches table, photo storage, owner auth, and a test runner. Update this file as those pieces land.
+- `/admin` redirects to `/admin/dashboard`: today's status per active staff member as photo cards (Late / On shift / Not in yet / Done / Missing OUT, filter chips, right-side Sheet drawer; `components/admin/dashboard/`). Data: `lib/dashboard/queries.ts` (real punches, voided ignored, 1h signed photo URLs); status rules in `lib/dashboard/status.ts`. Late = no IN by shift start (no grace), which is an owner choice beyond the PRD. "Today" uses `SHOP_TIMEZONE` (`lib/time.ts`, default `Asia/Manila`).
+- Not built yet: owner auth, the records page (corrections/void UI, CSV), the 90-day photo retention job, and a test runner. Update this file as those pieces land.
 
 ## Commands
 
@@ -22,7 +23,7 @@ Sip and Simple attendance monitoring app. The spec is `docs/superpowers/specs/20
 - `npx tsc --noEmit`: standalone type check
 - `npm run db:push`: apply new `supabase/migrations/*.sql` to the linked Supabase project
 - `npm run db:seed`: insert starting staff from `SEED_STAFF` in `scripts/db-seed.mts` (skips existing names; PINs from `SEED_PIN_*` in `.env.local`)
-- `npm run db:check`: Supabase smoke test (inserts, reads and deletes a test staff row; needs `.env.local`, see `.env.example`)
+- `npm run db:check`: Supabase smoke test (a test staff row plus `record_punch` and punches constraint checks, all deleted afterwards; needs `.env.local`, see `.env.example`)
 
 There is no test runner configured yet. `db:check` is the only database check.
 

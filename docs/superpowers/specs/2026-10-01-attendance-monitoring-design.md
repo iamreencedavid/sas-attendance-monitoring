@@ -158,25 +158,31 @@ create type punch_source as enum ('kiosk', 'manual');
 
 create table punches (
   id          uuid primary key default gen_random_uuid(),
-  staff_id    uuid not null references staff(id),
+  staff_id    uuid not null references staff(id) on delete restrict,
   type        punch_type not null,
   punched_at  timestamptz not null default now(),
+  shift_start time not null,             -- copied from staff by a trigger at insert
+  shift_end   time not null,
   photo_path  text,                      -- null when manual, or after retention purge
   photo_purged_at timestamptz,           -- set by the retention job
   source      punch_source not null default 'kiosk',
   user_agent  text,                      -- browser that punched, for owner audit
   note        text,                      -- required when source = 'manual'
+  voided_at   timestamptz,               -- a wrong punch is voided, never deleted
+  void_reason text,                      -- required when voided
   created_at  timestamptz not null default now(),
   constraint photo_required check (
     source = 'manual' or photo_path is not null or photo_purged_at is not null
   ),
-  constraint manual_note    check (source = 'kiosk'  or note is not null)
+  constraint manual_note    check (source = 'kiosk'  or note is not null),
+  constraint void_reason    check ((voided_at is null) = (void_reason is null))
 );
 create index punches_staff_time on punches (staff_id, punched_at desc);
 create index punches_time       on punches (punched_at desc);
+-- record_punch(id, staff_id, type, photo_path, user_agent): §8.3 steps 4 and 6 in one transaction.
 ```
 
-**Staff shift** (`shift_start`–`shift_end`, 24h) is one fixed shift per person and is reference info only in v1. Late and overtime rules remain a non-goal (§2). Each table is created by a Supabase CLI migration in `supabase/migrations/` (setup: `docs/setup/supabase.md`).
+**Staff shift** (`shift_start`–`shift_end`, 24h) is one fixed shift per person. Each punch keeps a copy of the shift it was made under, so changing a shift later doesn't rewrite history. **Late** (owner's choice, beyond §2): no IN by the shift start, or a first IN after the copied `shift_start`, with no grace period. It is shown on the admin dashboard and never stored. Overtime rules remain a non-goal. **Voided** punches stay in the table for audit but are ignored by the state check and hours. Each table is created by a Supabase CLI migration in `supabase/migrations/` (setup: `docs/setup/supabase.md`).
 
 **RLS is enabled on every table with no policies**, so the anon key can read or write nothing. All data access goes through server code using the **service-role key**, which is never sent to the browser, after the server has checked the owner session (admin pages) or the PIN (punch).
 
@@ -195,7 +201,7 @@ create index punches_time       on punches (punched_at desc);
 1. Validate the input: `staffId` is a uuid, `type` is in/out, `pin` is 4–6 digits, and `photo` is a Blob that is ≤ 500 KB and `image/jpeg`, with JPEG magic bytes `FF D8 FF`.
 2. Load the staff member. They must be `active`. If `locked_until > now()`, return "Too many attempts, try again in N min".
 3. `bcrypt.compare(pin, pin_hash)`. On failure, increment `failed_pin_count`; at **5 failures**, set `locked_until = now() + 5 min`. On success, reset the count.
-4. **State check**: the last punch's type must be the opposite of `type` (no prior punch means only `in` is allowed). **Exception:** if the last punch is an IN older than **16h** (a forgotten OUT), the person counts as clocked out, so `in` is allowed and the old shift is flagged "missing OUT" in admin. Reject if the last punch was under **60s** ago (double tap).
+4. **State check**: the last punch's type must be the opposite of `type` (no prior punch means only `in` is allowed). **Exception:** if the last punch is an IN older than **16h** (a forgotten OUT), the person counts as clocked out, so `in` is allowed and the old shift is flagged "missing OUT" in admin. Reject if the last punch was under **60s** ago (double tap). **One IN per shop date** (owner's choice): a second IN on the same `SHOP_TIMEZONE` date is rejected, so after IN and OUT the person is done until tomorrow. Voided punches don't count, so voiding a wrong OUT re-opens OUT.
 5. Generate `punchId`, then **upload the blob** to Storage with the service role.
 6. **Insert the punch row** with `punched_at = now()` (DB clock) and the request's `user_agent`. If the insert fails, **delete the uploaded object** so there are no orphans.
 7. Return `{ name, type, punchedAt }`.

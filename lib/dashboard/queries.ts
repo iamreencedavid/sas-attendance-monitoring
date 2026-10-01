@@ -1,0 +1,81 @@
+import "server-only";
+import { createAdminClient } from "@/lib/supabase/server";
+import { getAllStaff } from "@/lib/staff/queries";
+import { toMinutes } from "@/lib/staff/shift";
+import { addDays, formatClock, shopDayStart, shopNow } from "@/lib/time";
+import type { PunchType } from "@/lib/punch/types";
+import { deriveToday, shiftWindow } from "./status";
+import type { TodayBoard, TodayPunch } from "./types";
+
+const PHOTO_BUCKET = "punch-photos";
+const PHOTO_URL_SECONDS = 60 * 60;
+/** Punches this long before the shift start still count as that shift's (early arrival). */
+const EARLY_MINUTES = 3 * 60;
+
+type PunchRow = {
+  staff_id: string;
+  type: PunchType;
+  punched_at: string;
+  shift_start: string;
+  photo_path: string | null;
+};
+
+/**
+ * Today's status for every active staff member, sorted by shift start.
+ * Voided punches are ignored. Everything time-related is computed here so
+ * the browser never compares clocks.
+ */
+export async function getTodayBoard(): Promise<TodayBoard> {
+  const staff = (await getAllStaff()).filter((s) => s.active);
+  const now = shopNow();
+  const yesterday = addDays(now.dateKey, -1);
+
+  // From yesterday's midnight: an overnight shift starts the day before.
+  const supabase = createAdminClient();
+  const { data, error } = staff.length
+    ? await supabase
+        .from("punches")
+        .select("staff_id, type, punched_at, shift_start, photo_path")
+        .in("staff_id", staff.map((s) => s.id))
+        .is("voided_at", null)
+        .gte("punched_at", shopDayStart(yesterday).toISOString())
+        .order("punched_at")
+    : { data: [], error: null };
+  if (error) throw new Error(`Loading punches failed: ${error.message}`);
+  const rows = data as PunchRow[];
+
+  const paths = rows.flatMap((r) => (r.photo_path ? [r.photo_path] : []));
+  const urls = new Map<string, string>();
+  if (paths.length) {
+    const signed = await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(paths, PHOTO_URL_SECONDS);
+    for (const s of signed.data ?? []) if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl);
+  }
+
+  return {
+    dateLabel: now.dateLabel,
+    time: now.time,
+    staff: staff
+      .map((s) => {
+        // Minutes on the axis of the day this shift started (see shiftWindow).
+        const window = shiftWindow(s, now.minutes);
+        const dayStart = shopDayStart(window.now === now.minutes ? now.dateKey : yesterday).getTime();
+        const mine: TodayPunch[] = rows
+          .filter((r) => r.staff_id === s.id)
+          .map((r) => {
+            const minutes = Math.floor((new Date(r.punched_at).getTime() - dayStart) / 60_000);
+            return {
+              type: r.type,
+              minutes,
+              time: formatClock(minutes),
+              shiftStart: r.shift_start.slice(0, 5),
+              photoUrl: r.photo_path ? (urls.get(r.photo_path) ?? null) : null,
+            };
+          });
+        const today = mine.filter((p) => p.minutes >= window.start - EARLY_MINUTES);
+        // An IN left open from an earlier day still shows (as Missing OUT once it's 16h old).
+        const carried = today.length === 0 && mine.at(-1)?.type === "in" ? [mine.at(-1)!] : today;
+        return deriveToday(s, carried, now.minutes);
+      })
+      .sort((a, b) => toMinutes(a.shiftStart) - toMinutes(b.shiftStart) || a.name.localeCompare(b.name)),
+  };
+}
