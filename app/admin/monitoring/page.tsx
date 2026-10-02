@@ -1,6 +1,5 @@
 import { connection } from "next/server";
 import { MonitoringFilters } from "@/components/admin/monitoring/MonitoringFilters";
-import { PayrollButton } from "@/components/admin/monitoring/PayrollButton";
 import { ShiftTable } from "@/components/admin/monitoring/ShiftTable";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getShifts } from "@/lib/monitoring/queries";
@@ -46,10 +45,7 @@ export default async function MonitoringPage({ searchParams }: PageProps<"/admin
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <h1 className="text-2xl font-extrabold tracking-tight">Monitoring</h1>
-        <PayrollButton staff={staff.find((s) => s.id === staffId) ?? null} shifts={shifts} from={from} to={to} />
-      </div>
+      <h1 className="mb-4 text-2xl font-extrabold tracking-tight">Monitoring</h1>
       <MonitoringFilters staff={staff} filters={{ staffId, from, to }} today={today} />
       <ShiftTable shifts={shifts} />
     </div>

@@ -1,5 +1,5 @@
 import { shiftMinutes } from "@/lib/staff/shift";
-import type { ShiftRow } from "./types";
+import type { ShiftRow } from "@/lib/monitoring/types";
 
 export type PayrollRates = { dailyRate: number | null; overtimeRate: number | null };
 

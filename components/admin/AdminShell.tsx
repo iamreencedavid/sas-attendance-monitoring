@@ -10,6 +10,7 @@ import cup from "@/public/brand/cup.png";
 const NAV = [
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/monitoring", label: "Monitoring" },
+  { href: "/admin/payroll", label: "Payroll" },
   { href: "/admin/staff", label: "Staff" },
 ];
 

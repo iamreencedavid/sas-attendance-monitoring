@@ -93,7 +93,7 @@
   }
 }
 
-/* Print / Save PDF from the payroll dialog: print only the dialog, full height. */
+/* Print / Save PDF from the payroll drawer: print only the drawer, full height. */
 @media print {
   body * {
     visibility: hidden;
@@ -102,8 +102,8 @@
   [data-print-area] * {
     visibility: visible;
   }
-  /* Placement is done with print: utilities on the dialog itself (PayrollDialog). */
-  [data-print-area] [data-slot="dialog-close"] {
+  /* Placement is done with print: utilities on the drawer itself (PayrollDrawer). */
+  [data-print-area] [data-slot="sheet-close"] {
     display: none;
   }
 }

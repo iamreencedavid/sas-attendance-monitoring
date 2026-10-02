@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { RoleChip } from "@/components/admin/staff/RoleChip";
-import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import type { Payroll } from "@/lib/monitoring/payroll";
+import { SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import type { Payroll } from "@/lib/payroll/payroll";
 import type { ShiftRow } from "@/lib/monitoring/types";
 import { formatPeso } from "@/lib/staff/pay";
 import type { StaffRecord } from "@/lib/staff/types";
@@ -21,21 +21,15 @@ function skippedReason(shift: ShiftRow): string {
   return { on_shift: "still on shift", missing_out: "Missing OUT", no_in: "IN missing", closed: "" }[shift.state];
 }
 
-function period(from: string, to: string): string {
-  const year = to.slice(0, 4);
-  return from === to ? `${formatDateKey(from)} ${year}` : `${formatDateKey(from)} – ${formatDateKey(to)} ${year}`;
-}
-
-export function PayrollDialog({
+/** One pay week's breakdown, with Print / Save PDF (the @media print block in globals.css). */
+export function PayrollDrawer({
   staff,
-  from,
-  to,
+  label,
   payroll,
   onClose,
 }: {
   staff: StaffRecord;
-  from: string;
-  to: string;
+  label: string;
   payroll: Payroll;
   onClose: () => void;
 }) {
@@ -43,24 +37,25 @@ export function PayrollDialog({
   const noOt = staff.overtimeRate === null;
 
   return (
-    <DialogContent
+    <SheetContent
+      side="right"
       data-print-area
-      className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden bg-white p-0 font-admin text-admin-slate sm:max-w-2xl print:absolute print:top-0 print:left-0 print:max-h-none print:w-full print:max-w-none print:translate-none print:overflow-visible print:shadow-none print:ring-0"
+      className="gap-0 overflow-y-auto bg-white p-0 font-admin text-admin-slate shadow-[-12px_0_32px_rgba(30,40,51,0.12)] data-[side=right]:w-full data-[side=right]:sm:max-w-xl print:absolute print:shadow-none print:data-[side=right]:inset-auto print:data-[side=right]:top-0 print:data-[side=right]:left-0 print:data-[side=right]:h-auto print:data-[side=right]:w-full print:data-[side=right]:max-w-none print:data-[side=right]:border-0 print:overflow-visible"
     >
-      <DialogHeader className="gap-1.5 border-b border-admin-line px-5 pt-5 pb-4 sm:px-6">
-        <DialogTitle className="text-lg font-extrabold tracking-tight">Payroll · {staff.name}</DialogTitle>
-        <DialogDescription render={<div />} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-admin-subtle tabular-nums">
+      <SheetHeader className="gap-1.5 border-b border-admin-line px-5 pt-5 pb-4 sm:px-6">
+        <SheetTitle className="text-lg font-extrabold tracking-tight">Payroll · {staff.name}</SheetTitle>
+        <SheetDescription render={<div />} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-admin-subtle tabular-nums">
           <RoleChip role={staff.role} />
-          <span>{period(from, to)}</span>
+          <span>{label}</span>
           <span>
             · Daily rate {formatPeso(staff.dailyRate)} · OT {formatPeso(staff.overtimeRate)}
             {noOt ? "" : "/hr"}
           </span>
-        </DialogDescription>
+        </SheetDescription>
         <p className="text-xs text-admin-subtle">Using current rates. Late and early-leave minutes are deducted from the day&apos;s pay.</p>
-      </DialogHeader>
+      </SheetHeader>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 print:overflow-visible">
+      <div className="flex-1 px-5 py-4 sm:px-6">
         {(noDaily || noOt) && (
           <p role="alert" className="mb-3 rounded-md bg-roast-light px-3 py-2 text-[13px] font-semibold text-roast-light-ink">
             {noDaily ? `${staff.name}'s daily rate isn't set` : `${staff.name}'s overtime rate isn't set, so OT pays ₱0`}.{" "}
@@ -72,12 +67,13 @@ export function PayrollDialog({
           <p className="mb-3 rounded-md bg-stamp/10 px-3 py-2 text-[13px] font-semibold text-stamp">
             {payroll.skipped.length} {payroll.skipped.length === 1 ? "shift" : "shifts"} not counted:{" "}
             {payroll.skipped.map((s) => `${formatDateKey(s.dateKey)} (${skippedReason(s)})`).join(", ")}. Fix{" "}
-            {payroll.skipped.length === 1 ? "it" : "them"} in the table first.
+            {payroll.skipped.length === 1 ? "it" : "them"} on the{" "}
+            <Link href="/admin/monitoring" className="underline underline-offset-2 print:no-underline">Monitoring page</Link> first.
           </p>
         )}
 
         {payroll.days.length === 0 ? (
-          <p className="py-8 text-center text-sm text-admin-subtle">No completed shifts in this range.</p>
+          <p className="py-8 text-center text-sm text-admin-subtle">No completed shifts this week.</p>
         ) : (
           <table className="w-full border-collapse text-[13px] tabular-nums">
             <thead>
@@ -113,7 +109,7 @@ export function PayrollDialog({
         )}
       </div>
 
-      <DialogFooter className="m-0 block rounded-b-xl border-t border-admin-line bg-white px-5 py-4 sm:px-6">
+      <div className="sticky bottom-0 border-t border-admin-line bg-white px-5 py-4 sm:px-6 print:static">
         <dl className="space-y-1 text-[13px] tabular-nums">
           <div className="flex justify-between gap-3">
             <dt>
@@ -144,7 +140,7 @@ export function PayrollDialog({
             Print / Save PDF
           </button>
         </div>
-      </DialogFooter>
-    </DialogContent>
+      </div>
+    </SheetContent>
   );
 }
