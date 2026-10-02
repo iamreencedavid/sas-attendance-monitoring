@@ -119,3 +119,35 @@ export async function setStaffActive(_prev: ActionState, formData: FormData): Pr
     .eq("id", id);
   return error ? failed(error) : saved();
 }
+
+const PHOTO_BUCKET = "punch-photos";
+const REMOVE_BATCH = 100;
+
+/**
+ * Permanently erases a staff member with every punch and photo they have.
+ * The one exception to "punches are never deleted" (owner's choice). The
+ * database part is one transaction in `delete_staff`; photo files are removed
+ * after, best-effort, since leftover files are harmless once the rows are gone.
+ */
+export async function deleteStaff(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return NOT_ALLOWED;
+  const id = idFrom(formData);
+  if (!id) return SAVE_FAILED;
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.rpc("delete_staff", { p_staff_id: id });
+  if (error) {
+    console.error(error);
+    return { ok: false, message: "Couldn't delete. Try again." };
+  }
+
+  const paths = (data as string[] | null) ?? [];
+  for (let i = 0; i < paths.length; i += REMOVE_BATCH) {
+    const { error: removeError } = await supabase.storage.from(PHOTO_BUCKET).remove(paths.slice(i, i + REMOVE_BATCH));
+    if (removeError) console.error(`Removing photos of deleted staff ${id} failed: ${removeError.message}`);
+  }
+
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/admin/monitoring");
+  return saved();
+}

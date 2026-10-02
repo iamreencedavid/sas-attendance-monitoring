@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { signOut } from "@/lib/auth/actions";
+import cup from "@/public/brand/cup.png";
 
 const NAV = [
   { href: "/admin/dashboard", label: "Dashboard" },
@@ -23,7 +25,10 @@ export function AdminShell({ children, adminEmail }: { children: ReactNode; admi
 
   const sidebar = (
     <nav aria-label="Admin" className="flex h-full flex-col px-3 py-5">
-      <p className="px-2.5 pb-6 text-base font-extrabold tracking-tight">Sip and Simple</p>
+      <p className="flex items-center gap-2 px-2.5 pb-6 text-base font-extrabold tracking-tight">
+        <Image src={cup} alt="" className="size-6 flex-none" />
+        Sip and Simple
+      </p>
       <NavList items={NAV} pathname={pathname} onNavigate={() => setMenuOpen(false)} />
       <hr className="mx-2.5 my-3 border-admin-line" />
       <NavList items={SETTINGS_NAV} pathname={pathname} onNavigate={() => setMenuOpen(false)} />
@@ -54,7 +59,10 @@ export function AdminShell({ children, adminEmail }: { children: ReactNode; admi
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}
         <header className="flex items-center justify-between border-b border-admin-line bg-white px-4 py-3 md:hidden">
-          <span className="font-extrabold tracking-tight">Sip and Simple</span>
+          <span className="flex items-center gap-2 font-extrabold tracking-tight">
+            <Image src={cup} alt="" className="size-6 flex-none" />
+            Sip and Simple
+          </span>
           <button
             type="button"
             aria-expanded={menuOpen}

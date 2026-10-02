@@ -15,6 +15,7 @@ import { SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   createStaff,
   resetStaffPin,
+  deleteStaff,
   setStaffActive,
   unlockStaff,
   updateStaff,
@@ -465,22 +466,30 @@ function PinBox({ staff }: { staff: StaffRecord }) {
   );
 }
 
-/* ---------- Deactivate / reactivate (edit only) ---------- */
+/* ---------- Deactivate / reactivate and delete (edit only) ---------- */
+
+const linkBtn = "rounded px-0 text-sm font-bold outline-none hover:underline focus-visible:ring-2 focus-visible:ring-admin-slate";
+
+function StaffActions({ staff, onDone }: { staff: StaffRecord; onDone: () => void }) {
+  return (
+    <div className="mt-6 flex flex-wrap items-start gap-x-6 gap-y-3 border-t border-[#eef0f2] pt-4">
+      <ActiveToggle staff={staff} onDone={onDone} />
+      <DeleteStaff staff={staff} onDone={onDone} />
+    </div>
+  );
+}
 
 function ActiveToggle({ staff, onDone }: { staff: StaffRecord; onDone: () => void }) {
   const toggle = useStaffAction(setStaffActive, onDone);
   const verb = staff.active ? "Deactivate" : "Reactivate";
 
   return (
-    <form
-      onSubmit={(e) => toggle.handleSubmit(e, () => ({ next: "confirm" }))}
-      className="mt-6 border-t border-[#eef0f2] pt-4"
-    >
+    <form onSubmit={(e) => toggle.handleSubmit(e, () => ({ next: "confirm" }))}>
       <input type="hidden" name="id" value={staff.id} />
       <input type="hidden" name="active" value={String(!staff.active)} />
       <button
         type="submit"
-        className={`rounded px-0 text-sm font-bold outline-none hover:underline focus-visible:ring-2 focus-visible:ring-admin-slate ${staff.active ? "text-stamp" : "text-admin-slate"}`}
+        className={`${linkBtn} ${staff.active ? "text-stamp" : "text-admin-slate"}`}
       >
         {verb}
       </button>
@@ -496,6 +505,29 @@ function ActiveToggle({ staff, onDone }: { staff: StaffRecord; onDone: () => voi
         }
         confirmLabel={verb}
         tone={staff.active ? "danger" : "default"}
+      />
+    </form>
+  );
+}
+
+/** Permanently erases the staff member with all their punches and photos. */
+function DeleteStaff({ staff, onDone }: { staff: StaffRecord; onDone: () => void }) {
+  const remove = useStaffAction(deleteStaff, onDone);
+
+  return (
+    <form onSubmit={(e) => remove.handleSubmit(e, () => ({ next: "confirm" }))}>
+      <input type="hidden" name="id" value={staff.id} />
+      <button type="submit" className={`${linkBtn} text-stamp`}>
+        Delete staff
+      </button>
+      {remove.state.message && <p role="alert" className="mt-2 text-xs font-semibold text-stamp">{remove.state.message}</p>}
+
+      <ConfirmDialog
+        {...remove.confirm}
+        title={`Delete ${staff.name}?`}
+        description={`This permanently erases ${staff.name} and all of their punches and photos. Their attendance and payroll history will be gone. This can't be undone.`}
+        confirmLabel="Delete staff"
+        tone="danger"
       />
     </form>
   );
@@ -517,7 +549,7 @@ export function StaffDrawer({ mode, onClose }: { mode: DrawerMode; onClose: () =
       <div className="flex flex-1 flex-col px-5 pb-6 sm:px-6">
         {mode.kind === "edit" && <PinBox staff={mode.staff} />}
         <StaffForm mode={mode} onClose={onClose} />
-        {mode.kind === "edit" && <ActiveToggle staff={mode.staff} onDone={onClose} />}
+        {mode.kind === "edit" && <StaffActions staff={mode.staff} onDone={onClose} />}
       </div>
     </SheetContent>
   );

@@ -197,6 +197,27 @@ async function checkDevices(staffId: string, deviceIds: string[]) {
   console.log("✔ record_punch stores device_id");
 }
 
+/** delete_staff erases the staff row and every punch, and returns the photo paths. */
+async function checkDeleteStaff(staffId: string) {
+  const { count: before } = await supabase.from("punches").select("id", { count: "exact", head: true }).eq("staff_id", staffId);
+  const { data: paths, error } = await supabase.rpc("delete_staff", { p_staff_id: staffId });
+  if (error) throw new Error(`delete_staff failed: ${error.message}`);
+  const returned = (paths as string[]) ?? [];
+  if (!returned.every((p) => p.startsWith(`${staffId}/`)) || returned.length === 0) {
+    throw new Error(`delete_staff returned unexpected photo paths: ${JSON.stringify(returned)}`);
+  }
+  const { count: punchesLeft } = await supabase.from("punches").select("id", { count: "exact", head: true }).eq("staff_id", staffId);
+  const { count: staffLeft } = await supabase.from("staff").select("id", { count: "exact", head: true }).eq("id", staffId);
+  if (punchesLeft !== 0 || staffLeft !== 0) throw new Error(`delete_staff left ${punchesLeft} punches and ${staffLeft} staff rows.`);
+  console.log(`✔ delete_staff erased the staff row and ${before} punches (incl. voided), returned ${returned.length} photo paths`);
+
+  const again = await supabase.rpc("delete_staff", { p_staff_id: staffId });
+  if (again.error?.message !== "staff_not_found") {
+    throw new Error(`Expected staff_not_found on a second delete, got ${again.error ? again.error.message : "success"}.`);
+  }
+  console.log("✔ Rejected as expected: deleting a missing staff member (staff_not_found)");
+}
+
 async function main() {
   console.log(`→ Connecting to ${url}`);
   const pinHash = await bcrypt.hash("1234", 10);
@@ -237,8 +258,10 @@ async function main() {
 
     await checkPunches(inserted.id);
     await checkDevices(inserted.id, deviceIds);
+    await checkDeleteStaff(inserted.id);
   } finally {
-    // Punches first: staff_id and device_id are ON DELETE RESTRICT.
+    // Safety net if a check failed before delete_staff ran. Punches first:
+    // staff_id and device_id are ON DELETE RESTRICT.
     await supabase.from("punches").delete().eq("staff_id", inserted.id);
     if (deviceIds.length > 0) {
       const { error: deviceError } = await supabase.from("kiosk_devices").delete().in("id", deviceIds);
