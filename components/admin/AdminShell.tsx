@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  CalendarClockIcon,
+  LayoutDashboardIcon,
+  SettingsIcon,
+  TabletSmartphoneIcon,
+  UserCogIcon,
+  UsersIcon,
+  WalletIcon,
+  type LucideIcon,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -7,21 +17,23 @@ import { useState, type ReactNode } from "react";
 import { signOut } from "@/lib/auth/actions";
 import cup from "@/public/brand/cup.png";
 
-const NAV = [
-  { href: "/admin/dashboard", label: "Dashboard" },
-  { href: "/admin/monitoring", label: "Monitoring" },
-  { href: "/admin/payroll", label: "Payroll" },
-  { href: "/admin/staff", label: "Staff" },
+type NavItem = { href: string; label: string; icon: LucideIcon };
+
+const NAV: NavItem[] = [
+  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
+  { href: "/admin/monitoring", label: "Monitoring", icon: CalendarClockIcon },
+  { href: "/admin/payroll", label: "Payroll", icon: WalletIcon },
+  { href: "/admin/staff", label: "Staff", icon: UsersIcon },
 ];
 
 // Below a divider: who can sign in to /admin, and which browsers can punch.
-const ACCESS_NAV = [
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/devices", label: "Devices" },
+const ACCESS_NAV: NavItem[] = [
+  { href: "/admin/users", label: "Users", icon: UserCogIcon },
+  { href: "/admin/devices", label: "Devices", icon: TabletSmartphoneIcon },
 ];
 
 // Its own group at the bottom: shop-wide settings.
-const SETTINGS_NAV = [{ href: "/admin/settings", label: "Settings" }];
+const SETTINGS_NAV: NavItem[] = [{ href: "/admin/settings", label: "Settings", icon: SettingsIcon }];
 
 export function AdminShell({ children, adminEmail }: { children: ReactNode; adminEmail: string }) {
   const pathname = usePathname();
@@ -96,7 +108,7 @@ function NavList({
   pathname,
   onNavigate,
 }: {
-  items: { href: string; label: string }[];
+  items: NavItem[];
   pathname: string;
   onNavigate: () => void;
 }) {
@@ -110,10 +122,11 @@ function NavList({
               href={item.href}
               aria-current={current ? "page" : undefined}
               onClick={onNavigate}
-              className={`block rounded-md px-2.5 py-2 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-admin-slate ${
+              className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-admin-slate ${
                 current ? "bg-admin-mist" : "text-admin-subtle hover:bg-admin-mist/60"
               }`}
             >
+              <item.icon aria-hidden="true" className="size-[18px] flex-none" strokeWidth={2} />
               {item.label}
             </Link>
           </li>

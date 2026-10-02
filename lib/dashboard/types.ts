@@ -1,6 +1,6 @@
 import type { PunchType, StaffRole } from "@/lib/punch/types";
 
-export type TodayStatus = "late" | "on_shift" | "done" | "not_in" | "missing_out";
+export type TodayStatus = "late" | "on_shift" | "done" | "not_in" | "missing_out" | "day_off";
 
 export type TodayPunch = {
   type: PunchType;
@@ -19,6 +19,7 @@ export type StaffToday = {
   id: string;
   name: string;
   role: StaffRole;
+  /** Today's shift (Saturdays can differ), or the weekday shift on a day off. */
   shiftStart: string; // HH:MM
   shiftEnd: string; // HH:MM
   status: TodayStatus;

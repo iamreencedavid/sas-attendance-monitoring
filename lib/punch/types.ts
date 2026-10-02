@@ -1,6 +1,9 @@
 export type PunchType = "in" | "out";
 
-export type StaffRole = "barista" | "kitchen" | "supervisor";
+export type StaffRole = "barista" | "kitchen" | "barista_kitchen" | "supervisor";
+
+/** Supervisors don't punch: they're left off the punch page and the Dashboard, and the kiosk refuses them. */
+export const NON_PUNCHING_ROLE = "supervisor" satisfies StaffRole;
 
 export type Staff = {
   id: string;

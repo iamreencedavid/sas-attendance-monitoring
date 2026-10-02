@@ -1,11 +1,13 @@
 import type { StaffRole } from "@/lib/punch/types";
 import { formatPeso } from "./pay";
+import { describeSaturday } from "./shift";
 import type { StaffRecord } from "./types";
 import type { StaffInput } from "./validation";
 
 const ROLE_NAMES: Record<StaffRole, string> = {
   barista: "Barista",
   kitchen: "Kitchen",
+  barista_kitchen: "Barista + Kitchen",
   supervisor: "Supervisor",
 };
 
@@ -19,6 +21,9 @@ export function describeChanges(before: StaffRecord, after: StaffInput): string[
       `Shift: ${before.shiftStart}–${before.shiftEnd} → ${after.shiftStart}–${after.shiftEnd}`,
     );
   }
+  const satBefore = describeSaturday(before.saturday);
+  const satAfter = describeSaturday(after.saturday);
+  if (satBefore !== satAfter) changes.push(`Saturday: ${satBefore} → ${satAfter}`);
   if (before.dailyRate !== after.dailyRate) {
     changes.push(`Daily rate: ${formatPeso(before.dailyRate)} → ${formatPeso(after.dailyRate)}`);
   }

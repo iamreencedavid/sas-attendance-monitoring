@@ -52,7 +52,7 @@ async function add() {
   }
   const { data: staff, error } = await supabase
     .from("staff")
-    .select("id, name, shift_start, shift_end")
+    .select("id, name, shift_start, shift_end, saturday_start, saturday_end, saturday_off")
     .eq("active", true)
     .order("name");
   if (error) throw new Error(`Loading staff failed: ${error.message}`);
@@ -69,13 +69,16 @@ async function add() {
   const summary: Record<Kind, number> = { on_time: 0, overtime: 0, late: 0, early_leave: 0 };
 
   staff.forEach((s, si) => {
-    const start = toMinutes(s.shift_start.slice(0, 5));
-    let end = toMinutes(s.shift_end.slice(0, 5));
-    if (end <= start) end += 24 * 60; // overnight shift
-
     DATES.forEach((date, di) => {
       const inPath = `mock/${s.id}/${date}-in.jpg`;
       if (done.has(inPath)) return;
+      // Saturdays use the Saturday shift when set; staff who are off get no mock shift.
+      const saturday = new Date(`${date}T00:00:00Z`).getUTCDay() === 6;
+      if (saturday && s.saturday_off) return;
+      const ownSaturday = saturday && s.saturday_start && s.saturday_end;
+      const start = toMinutes((ownSaturday ? s.saturday_start : s.shift_start).slice(0, 5));
+      let end = toMinutes((ownSaturday ? s.saturday_end : s.shift_end).slice(0, 5));
+      if (end <= start) end += 24 * 60; // overnight shift
 
       const k = si * DATES.length + di;
       const kind = kindOf(k);

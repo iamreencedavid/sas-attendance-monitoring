@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { SHOP_TIMEZONE, shopDateKey, shopDayStart } from "@/lib/time";
 import { requestLocation } from "./location";
 import { isDoubleTap, nextAllowedType, PIN_LOCK_MS, PIN_MAX_ATTEMPTS, PIN_PATTERN } from "./rules";
-import type { LastPunch, PunchResult, PunchState, PunchType } from "./types";
+import { NON_PUNCHING_ROLE, type LastPunch, type PunchResult, type PunchState, type PunchType } from "./types";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -37,11 +37,12 @@ export async function verifyStaffPin(staffId: string, pin: string): Promise<Veri
   const supabase = createAdminClient();
   const { data: staff, error } = await supabase
     .from("staff")
-    .select("active, pin_hash, failed_pin_count, locked_until")
+    .select("active, role, pin_hash, failed_pin_count, locked_until")
     .eq("id", staffId)
     .maybeSingle();
   if (error) return { ok: false, error: "Couldn't check your PIN. Try again." };
-  if (!staff?.active) return { ok: false, error: "Unknown staff member." };
+  // Same answer as an unknown id: supervisors aren't on the punch page.
+  if (!staff?.active || staff.role === NON_PUNCHING_ROLE) return { ok: false, error: "Unknown staff member." };
 
   const now = Date.now();
   const lockedUntil = staff.locked_until ? new Date(staff.locked_until).getTime() : 0;

@@ -37,6 +37,8 @@ export function statusLine(s: StaffToday): string {
         : `Shift ${s.shiftStart} · ${formatDuration(s.overdueMinutes)} overdue`;
     case "missing_out":
       return `IN ${last?.time}, no OUT`;
+    case "day_off":
+      return "Off on Saturdays";
     case "not_in":
       return `Shift ${s.shiftStart}–${s.shiftEnd}${s.graceUntil ? ` · grace until ${s.graceUntil}` : ""}`;
   }

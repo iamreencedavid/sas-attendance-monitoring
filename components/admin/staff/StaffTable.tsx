@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatPeso } from "@/lib/staff/pay";
-import { shiftHours } from "@/lib/staff/shift";
+import { shiftHours, type SaturdayShift } from "@/lib/staff/shift";
 import type { StaffRecord } from "@/lib/staff/types";
 import { PinMeter } from "./PinMeter";
 import { RoleChip } from "./RoleChip";
@@ -98,6 +98,7 @@ export function StaffTable({ staff }: { staff: StaffRecord[] }) {
         <ul aria-label="Role colours" className="hidden gap-3 text-xs text-admin-subtle lg:ml-auto lg:flex">
           <li className="flex items-center gap-1.5"><i className="size-2.5 rounded-[3px] bg-roast-light" />Barista</li>
           <li className="flex items-center gap-1.5"><i className="size-2.5 rounded-[3px] bg-roast-medium" />Kitchen</li>
+          <li className="flex items-center gap-1.5"><i className="size-2.5 rounded-[3px] bg-[linear-gradient(90deg,var(--color-roast-light)_50%,var(--color-roast-medium)_50%)]" />Barista + Kitchen</li>
           <li className="flex items-center gap-1.5"><i className="size-2.5 rounded-[3px] bg-roast-dark" />Supervisor</li>
         </ul>
       </div>
@@ -121,6 +122,7 @@ export function StaffTable({ staff }: { staff: StaffRecord[] }) {
                   <th className="px-3.5 py-2.5 font-bold">Role</th>
                   <th className="px-3.5 py-2.5 font-bold">Shift</th>
                   <th className="px-3.5 py-2.5 font-bold">Hours</th>
+                  <th className="px-3.5 py-2.5 font-bold">Saturday</th>
                   <th className="px-3.5 py-2.5 text-right font-bold">Daily rate</th>
                   <th className="px-3.5 py-2.5 text-right font-bold">OT / hr</th>
                   <th className="px-3.5 py-2.5 font-bold">Wrong PINs</th>
@@ -138,6 +140,7 @@ export function StaffTable({ staff }: { staff: StaffRecord[] }) {
                     <td className="px-3.5 py-3"><RoleChip role={s.role} muted={!s.active} /></td>
                     <td className="px-3.5 py-3">{s.shiftStart}–{s.shiftEnd}</td>
                     <td className="px-3.5 py-3">{shiftHours(s.shiftStart, s.shiftEnd)}</td>
+                    <td className="px-3.5 py-3"><SaturdayCell saturday={s.saturday} /></td>
                     <td className="px-3.5 py-3 text-right"><Peso amount={s.dailyRate} /></td>
                     <td className="px-3.5 py-3 text-right"><Peso amount={s.overtimeRate} /></td>
                     <td className="px-3.5 py-3"><PinMeter failed={s.failedPinCount} locked={!!s.lockMinutesLeft} /></td>
@@ -173,6 +176,7 @@ export function StaffTable({ staff }: { staff: StaffRecord[] }) {
                   <span className="mt-2 flex items-center gap-3 text-[13px]">
                     <RoleChip role={s.role} muted={!s.active} />
                     <span>{s.shiftStart}–{s.shiftEnd}</span>
+                    <span className="text-admin-subtle">{saturdayShort(s.saturday)}</span>
                     <span className="ml-auto"><PinMeter failed={s.failedPinCount} locked={!!s.lockMinutesLeft} /></span>
                   </span>
                   <span className="mt-1.5 block text-[13px] text-admin-subtle">
@@ -198,4 +202,23 @@ export function StaffTable({ staff }: { staff: StaffRecord[] }) {
       </Sheet>
     </div>
   );
+}
+
+function SaturdayCell({ saturday }: { saturday: SaturdayShift }) {
+  if (saturday.kind === "same") return <span className="text-admin-subtle">Same</span>;
+  if (saturday.kind === "off") {
+    return <span className="rounded-[5px] bg-admin-mist px-1.5 py-0.5 text-xs font-bold text-admin-subtle">Day off</span>;
+  }
+  return (
+    <span>
+      {saturday.start}–{saturday.end}{" "}
+      <span className="text-admin-subtle">· {shiftHours(saturday.start, saturday.end)}h</span>
+    </span>
+  );
+}
+
+/** Phone cards: "Sat 08:00–14:00", "Sat same", "Sat off". */
+function saturdayShort(saturday: SaturdayShift): string {
+  if (saturday.kind === "shift") return `Sat ${saturday.start}–${saturday.end}`;
+  return saturday.kind === "off" ? "Sat off" : "Sat same";
 }

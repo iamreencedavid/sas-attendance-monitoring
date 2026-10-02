@@ -22,7 +22,7 @@ import {
 } from "@/lib/staff/actions";
 import { describeChanges } from "@/lib/staff/changes";
 import { pesoInput } from "@/lib/staff/pay";
-import { describeShift, SHIFT_TIMES } from "@/lib/staff/shift";
+import { describeShift, SHIFT_TIMES, type SaturdayShift } from "@/lib/staff/shift";
 import type { ActionState, StaffRecord } from "@/lib/staff/types";
 import {
   parsePinForm,
@@ -225,6 +225,10 @@ function StaffForm({ mode, onClose }: { mode: DrawerMode; onClose: () => void })
   const editing = mode.kind === "edit" ? mode.staff : null;
   const [shiftStart, setShiftStart] = useState(editing?.shiftStart ?? "");
   const [shiftEnd, setShiftEnd] = useState(editing?.shiftEnd ?? "");
+  const savedSaturday = editing?.saturday;
+  const [satMode, setSatMode] = useState<SaturdayShift["kind"]>(savedSaturday?.kind ?? "same");
+  const [satStart, setSatStart] = useState(savedSaturday?.kind === "shift" ? savedSaturday.start : "");
+  const [satEnd, setSatEnd] = useState(savedSaturday?.kind === "shift" ? savedSaturday.end : "");
   const [changes, setChanges] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -252,6 +256,9 @@ function StaffForm({ mode, onClose }: { mode: DrawerMode; onClose: () => void })
       ? describeShift(shiftStart, shiftEnd)
       : null;
 
+  const satReadout =
+    TIME_24H.test(satStart) && TIME_24H.test(satEnd) && satStart !== satEnd ? describeShift(satStart, satEnd) : null;
+
   return (
     <form onSubmit={(e) => form.handleSubmit(e, decide)} noValidate>
       {editing && <input type="hidden" name="id" value={editing.id} />}
@@ -270,7 +277,7 @@ function StaffForm({ mode, onClose }: { mode: DrawerMode; onClose: () => void })
 
       <fieldset className="mb-3.5">
         <legend className="mb-1.5 text-[12.5px] font-bold">Role</legend>
-        <div className="flex gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           {STAFF_ROLES.map((role) => (
             <label key={role} className="flex-1">
               <input
@@ -323,6 +330,67 @@ function StaffForm({ mode, onClose }: { mode: DrawerMode; onClose: () => void })
         )}
       </p>
 
+      <fieldset className="mb-3.5">
+        <legend className="mb-1.5 text-[12.5px] font-bold">Saturday</legend>
+        <div className="flex gap-1.5">
+          {SATURDAY_MODES.map(({ value, label }) => (
+            <label key={value} className="flex-1">
+              <input
+                type="radio"
+                name="saturdayMode"
+                value={value}
+                checked={satMode === value}
+                onChange={() => setSatMode(value)}
+                className="peer sr-only"
+              />
+              <span className="block cursor-pointer rounded-[7px] border border-admin-line bg-white px-1 py-2 text-center text-[13px] font-bold text-admin-subtle peer-checked:border-transparent peer-checked:bg-admin-slate peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-admin-slate peer-focus-visible:ring-offset-2">
+                {label}
+              </span>
+            </label>
+          ))}
+        </div>
+        {errors.saturdayMode && <p className="mt-1.5 text-xs font-semibold text-stamp">{errors.saturdayMode}</p>}
+        {satMode === "off" && (
+          <p className="mt-1.5 text-xs text-admin-subtle">Shown as &ldquo;Day off&rdquo; on the Dashboard on Saturdays.</p>
+        )}
+      </fieldset>
+
+      {satMode === "shift" && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Saturday starts" id={`${uid}-sat-start`} error={errors.saturdayStart}>
+              <SelectInput
+                id={`${uid}-sat-start`}
+                name="saturdayStart"
+                error={errors.saturdayStart}
+                value={satStart}
+                onChange={(e) => setSatStart(e.target.value)}
+                placeholder="Choose start"
+                options={timeOptions(savedSaturday?.kind === "shift" ? savedSaturday.start : "")}
+              />
+            </Field>
+            <Field label="Saturday ends" id={`${uid}-sat-end`} error={errors.saturdayEnd}>
+              <SelectInput
+                id={`${uid}-sat-end`}
+                name="saturdayEnd"
+                error={errors.saturdayEnd}
+                value={satEnd}
+                onChange={(e) => setSatEnd(e.target.value)}
+                placeholder="Choose end"
+                options={timeOptions(savedSaturday?.kind === "shift" ? savedSaturday.end : "")}
+              />
+            </Field>
+          </div>
+          <p aria-live="polite" className="-mt-1 mb-3.5 min-h-6">
+            {satReadout && (
+              <span className="inline-block rounded-md bg-admin-mist px-2.5 py-1 text-[12.5px] font-bold text-admin-subtle">
+                {satReadout}
+              </span>
+            )}
+          </p>
+        </>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <Field label="Daily rate" id={`${uid}-daily`} error={errors.dailyRate} hint="Basic pay per day">
           <PesoInput id={`${uid}-daily`} name="dailyRate" error={errors.dailyRate} defaultValue={pesoInput(editing?.dailyRate ?? null)} />
@@ -374,11 +442,18 @@ function StaffForm({ mode, onClose }: { mode: DrawerMode; onClose: () => void })
   );
 }
 
+const SATURDAY_MODES: { value: SaturdayShift["kind"]; label: string }[] = [
+  { value: "same", label: "Same as weekday" },
+  { value: "shift", label: "Different shift" },
+  { value: "off", label: "Day off" },
+];
+
 function checkedTone(role: (typeof STAFF_ROLES)[number]) {
   // Tailwind needs literal class names, so map each tone to its peer-checked variant.
   return {
     barista: "peer-checked:bg-roast-light peer-checked:text-roast-light-ink",
     kitchen: "peer-checked:bg-roast-medium peer-checked:text-roast-medium-ink",
+    barista_kitchen: "peer-checked:bg-[linear-gradient(90deg,var(--color-roast-light)_50%,var(--color-roast-medium)_50%)] peer-checked:text-roast-medium-ink",
     supervisor: "peer-checked:bg-roast-dark peer-checked:text-roast-dark-ink",
   }[role] satisfies string;
 }

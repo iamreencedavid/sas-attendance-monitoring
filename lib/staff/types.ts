@@ -1,4 +1,5 @@
 import type { StaffRole } from "@/lib/punch/types";
+import type { SaturdayShift } from "./shift";
 import type { FieldErrors } from "./validation";
 
 /** A staff member as the admin sees them. Never includes pin_hash. */
@@ -8,6 +9,8 @@ export type StaffRecord = {
   role: StaffRole;
   shiftStart: string; // HH:MM
   shiftEnd: string; // HH:MM
+  /** Saturday's own hours, a day off, or the weekday shift. */
+  saturday: SaturdayShift;
   /** Basic pay per day in pesos, or null when not set yet. */
   dailyRate: number | null;
   /** Overtime pay per hour in pesos, or null when not set yet. */

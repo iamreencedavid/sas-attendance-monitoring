@@ -197,6 +197,55 @@ async function checkDevices(staffId: string, deviceIds: string[]) {
   console.log("✔ record_punch stores device_id");
 }
 
+/** Saturday shift columns and punches_copy_shift picking the shift by the punch's shop date. */
+async function checkSaturdayShift(staffId: string, base: Record<string, unknown>, name: string) {
+  await expectRejected("Saturday start without an end", { ...base, name: `${name} s1`, saturday_start: "08:00" });
+  await expectRejected("Saturday start equals end", { ...base, name: `${name} s2`, saturday_start: "08:00", saturday_end: "08:00" });
+  await expectRejected("Saturday off with Saturday times", {
+    ...base,
+    name: `${name} s3`,
+    saturday_start: "08:00",
+    saturday_end: "12:00",
+    saturday_off: true,
+  });
+
+  const { error } = await supabase.from("staff").update({ saturday_start: "08:00", saturday_end: "12:00" }).eq("id", staffId);
+  if (error) throw new Error(`Setting a Saturday shift failed: ${error.message}`);
+
+  // Sat 26 Sep and Fri 25 Sep 2026, 09:00 Manila; 23:30 Friday is still Friday in Manila (15:30 UTC).
+  const cases = [
+    { at: "2026-09-26T09:00:00+08:00", want: "08:00–12:00", label: "Saturday punch" },
+    { at: "2026-09-25T09:00:00+08:00", want: "06:00–14:00", label: "Friday punch" },
+    { at: "2026-09-25T23:30:00+08:00", want: "06:00–14:00", label: "Friday 23:30 punch" },
+  ];
+  for (const c of cases) {
+    const { data, error: insertError } = await supabase
+      .from("punches")
+      .insert({ staff_id: staffId, type: "in", punched_at: c.at, source: "manual", note: "db-check saturday" })
+      .select("shift_start, shift_end")
+      .single();
+    if (insertError) throw new Error(`${c.label} insert failed: ${insertError.message}`);
+    const got = `${hhmm(data.shift_start)}–${hhmm(data.shift_end)}`;
+    if (got !== c.want) throw new Error(`${c.label} copied ${got}, expected ${c.want}.`);
+    console.log(`✔ ${c.label} copied ${got}`);
+  }
+
+  // Day off copies the weekday shift if they punch anyway.
+  const { error: offError } = await supabase
+    .from("staff")
+    .update({ saturday_start: null, saturday_end: null, saturday_off: true })
+    .eq("id", staffId);
+  if (offError) throw new Error(`Setting Saturday off failed: ${offError.message}`);
+  const { data: off, error: offInsert } = await supabase
+    .from("punches")
+    .insert({ staff_id: staffId, type: "in", punched_at: "2026-09-19T09:00:00+08:00", source: "manual", note: "db-check saturday" })
+    .select("shift_start, shift_end")
+    .single();
+  if (offInsert) throw new Error(`Day-off punch insert failed: ${offInsert.message}`);
+  if (`${hhmm(off.shift_start)}–${hhmm(off.shift_end)}` !== "06:00–14:00") throw new Error("Day-off punch didn't copy the weekday shift.");
+  console.log("✔ Saturday punch on a day off copied the weekday shift");
+}
+
 /** delete_staff erases the staff row and every punch, and returns the photo paths. */
 async function checkDeleteStaff(staffId: string) {
   const { count: before } = await supabase.from("punches").select("id", { count: "exact", head: true }).eq("staff_id", staffId);
@@ -257,6 +306,7 @@ async function main() {
     await expectRejected("negative overtime rate", { ...base, name: `${name} x4`, overtime_rate: -0.01 });
 
     await checkPunches(inserted.id);
+    await checkSaturdayShift(inserted.id, base, name);
     await checkDevices(inserted.id, deviceIds);
     await checkDeleteStaff(inserted.id);
   } finally {

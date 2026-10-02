@@ -28,7 +28,8 @@ export function DashboardGrid({ board }: { board: TodayBoard }) {
 
   const filters: { key: Filter; label: string }[] = [
     { key: "all", label: `All ${board.staff.length}` },
-    ...STATUS_ORDER.filter((s) => s !== "missing_out" || counts.missing_out > 0).map((s) => ({
+    // Missing OUT and Day off only show up when someone has that status.
+    ...STATUS_ORDER.filter((s) => (s !== "missing_out" && s !== "day_off") || counts[s] > 0).map((s) => ({
       key: s,
       label: `${STATUS_LABELS[s]} ${counts[s]}`,
     })),

@@ -3,6 +3,7 @@ import type { PunchType, Staff, StaffRole } from "@/lib/punch/types";
 const ROLE_LABELS: Record<StaffRole, string> = {
   barista: "Barista",
   kitchen: "Kitchen",
+  barista_kitchen: "Barista + Kitchen",
   supervisor: "Supervisor",
 };
 

@@ -4,8 +4,8 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { getAllStaff } from "@/lib/staff/queries";
 import { toMinutes } from "@/lib/staff/shift";
 import { addDays, formatClock, shopDayStart, shopNow } from "@/lib/time";
-import type { PunchType } from "@/lib/punch/types";
-import { deriveToday, shiftWindow } from "./status";
+import { NON_PUNCHING_ROLE, type PunchType } from "@/lib/punch/types";
+import { deriveToday, pickShift, shiftWindow } from "./status";
 import type { TodayBoard, TodayPunch } from "./types";
 
 const PHOTO_BUCKET = "punch-photos";
@@ -29,7 +29,8 @@ type PunchRow = {
  */
 export async function getTodayBoard(): Promise<TodayBoard> {
   const [allStaff, settings] = await Promise.all([getAllStaff(), getSettings()]);
-  const staff = allStaff.filter((s) => s.active);
+  // Supervisors don't punch, so they have no status card.
+  const staff = allStaff.filter((s) => s.active && s.role !== NON_PUNCHING_ROLE);
   const now = shopNow();
   const yesterday = addDays(now.dateKey, -1);
 
@@ -59,9 +60,11 @@ export async function getTodayBoard(): Promise<TodayBoard> {
     time: now.time,
     staff: staff
       .map((s) => {
+        const { shift, fromYesterday, dayOff } = pickShift(s, now.dateKey, yesterday, now.minutes);
+        const staffToday = { ...s, shiftStart: shift.start, shiftEnd: shift.end };
         // Minutes on the axis of the day this shift started (see shiftWindow).
-        const window = shiftWindow(s, now.minutes);
-        const dayStart = shopDayStart(window.now === now.minutes ? now.dateKey : yesterday).getTime();
+        const window = shiftWindow(staffToday, now.minutes, fromYesterday);
+        const dayStart = shopDayStart(fromYesterday ? yesterday : now.dateKey).getTime();
         const mine: TodayPunch[] = rows
           .filter((r) => r.staff_id === s.id)
           .map((r) => {
@@ -78,7 +81,12 @@ export async function getTodayBoard(): Promise<TodayBoard> {
         const today = mine.filter((p) => p.minutes >= window.start - EARLY_MINUTES);
         // An IN left open from an earlier day still shows (as Missing OUT once it's 16h old).
         const carried = today.length === 0 && mine.at(-1)?.type === "in" ? [mine.at(-1)!] : today;
-        return deriveToday(s, carried, now.minutes, settings.graceMinutes);
+        return deriveToday(staffToday, carried, {
+          nowMinutes: now.minutes,
+          fromYesterday,
+          dayOff,
+          graceMinutes: settings.graceMinutes,
+        });
       })
       .sort((a, b) => toMinutes(a.shiftStart) - toMinutes(b.shiftStart) || a.name.localeCompare(b.name)),
   };
