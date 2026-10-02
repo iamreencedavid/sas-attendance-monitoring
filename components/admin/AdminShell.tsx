@@ -15,10 +15,13 @@ const NAV = [
 ];
 
 // Below a divider: who can sign in to /admin, and which browsers can punch.
-const SETTINGS_NAV = [
+const ACCESS_NAV = [
   { href: "/admin/users", label: "Users" },
   { href: "/admin/devices", label: "Devices" },
 ];
+
+// Its own group at the bottom: shop-wide settings.
+const SETTINGS_NAV = [{ href: "/admin/settings", label: "Settings" }];
 
 export function AdminShell({ children, adminEmail }: { children: ReactNode; adminEmail: string }) {
   const pathname = usePathname();
@@ -31,6 +34,8 @@ export function AdminShell({ children, adminEmail }: { children: ReactNode; admi
         Sip and Simple
       </p>
       <NavList items={NAV} pathname={pathname} onNavigate={() => setMenuOpen(false)} />
+      <hr className="mx-2.5 my-3 border-admin-line" />
+      <NavList items={ACCESS_NAV} pathname={pathname} onNavigate={() => setMenuOpen(false)} />
       <hr className="mx-2.5 my-3 border-admin-line" />
       <NavList items={SETTINGS_NAV} pathname={pathname} onNavigate={() => setMenuOpen(false)} />
       <div className="mt-auto space-y-2 px-2.5 pt-6 text-xs text-admin-subtle">
