@@ -1,5 +1,6 @@
 import { STALE_IN_MS } from "@/lib/punch/rules";
 import { isOvernight, shiftMinutes, toMinutes } from "@/lib/staff/shift";
+import { formatClock } from "@/lib/time";
 import type { StaffToday, TodayPunch } from "./types";
 
 type ShiftStaff = Pick<StaffToday, "id" | "name" | "role" | "shiftStart" | "shiftEnd">;
@@ -18,9 +19,19 @@ export function shiftWindow(staff: ShiftStaff, nowMinutes: number) {
   return { start, end, now: inYesterdaysShift ? nowMinutes + 1440 : nowMinutes };
 }
 
-/** Status for one staff member from today's punches (oldest first). */
-export function deriveToday(staff: ShiftStaff, punches: TodayPunch[], nowMinutes: number): StaffToday {
+/**
+ * Status for one staff member from today's punches (oldest first). An IN up
+ * to `graceMinutes` after the shift start is on time (8:15 with 15 minutes of
+ * grace), and only the minutes past the grace count as late.
+ */
+export function deriveToday(
+  staff: ShiftStaff,
+  punches: TodayPunch[],
+  nowMinutes: number,
+  graceMinutes: number,
+): StaffToday {
   const { start, end, now } = shiftWindow(staff, nowMinutes);
+  const lateFrom = start + graceMinutes;
   const firstIn = punches.find((p) => p.type === "in");
   const last = punches.at(-1);
 
@@ -43,9 +54,11 @@ export function deriveToday(staff: ShiftStaff, punches: TodayPunch[], nowMinutes
     shiftEnd: staff.shiftEnd,
     punches,
     // Against the shift copied onto the punch, so a later shift change doesn't rewrite history.
-    lateMinutes: firstIn ? Math.max(0, firstIn.minutes - toMinutes(firstIn.shiftStart)) : 0,
+    // The grace is the current setting: it isn't copied onto punches.
+    lateMinutes: firstIn ? Math.max(0, firstIn.minutes - (toMinutes(firstIn.shiftStart) + graceMinutes)) : 0,
     overdueMinutes: 0,
     shiftOver: false,
+    graceUntil: null,
     workedMinutes: worked,
   };
 
@@ -53,6 +66,7 @@ export function deriveToday(staff: ShiftStaff, punches: TodayPunch[], nowMinutes
     return { ...base, status: now - last.minutes > STALE_IN_MINUTES ? "missing_out" : "on_shift" };
   }
   if (last?.type === "out") return { ...base, status: "done" };
-  if (now >= start) return { ...base, status: "late", overdueMinutes: now - start, shiftOver: now >= end };
-  return { ...base, status: "not_in" };
+  if (now > lateFrom) return { ...base, status: "late", overdueMinutes: now - lateFrom, shiftOver: now >= end };
+  const inGrace = graceMinutes > 0 && now >= start;
+  return { ...base, status: "not_in", graceUntil: inGrace ? formatClock(lateFrom) : null };
 }

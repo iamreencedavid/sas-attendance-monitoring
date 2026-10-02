@@ -3,6 +3,7 @@ import { PayrollFilters } from "@/components/admin/payroll/PayrollFilters";
 import { PayrollTable, type PayrollWeekView } from "@/components/admin/payroll/PayrollTable";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getShifts } from "@/lib/monitoring/queries";
+import { getSettings } from "@/lib/settings/queries";
 import { calculatePayroll, type Payroll } from "@/lib/payroll/payroll";
 import { groupByWeek, lastFullWeek } from "@/lib/payroll/weeks";
 import { getAllStaff } from "@/lib/staff/queries";
@@ -30,17 +31,19 @@ export default async function PayrollPage({ searchParams }: PageProps<"/admin/pa
   const staffId = UUID.test(param(params.staff)) ? param(params.staff) : "";
 
   let staff: StaffRecord[];
-  let picked: { staff: StaffRecord; weeks: PayrollWeekView[]; total: Payroll } | null = null;
+  let picked: { staff: StaffRecord; weeks: PayrollWeekView[]; total: Payroll; graceMinutes: number } | null = null;
   try {
     staff = await getAllStaff();
     const person = staff.find((s) => s.id === staffId);
     // Nothing is loaded until one staff member is picked and searched.
     if (person) {
-      const shifts = await getShifts({ staffId: person.id, from, to });
+      const settings = await getSettings();
+      const shifts = await getShifts({ staffId: person.id, from, to }, settings);
       picked = {
         staff: person,
         weeks: groupByWeek(shifts, from, to).map((w) => ({ ...w, payroll: calculatePayroll(w.shifts, person) })),
         total: calculatePayroll(shifts, person),
+        graceMinutes: settings.graceMinutes,
       };
     }
   } catch (err) {

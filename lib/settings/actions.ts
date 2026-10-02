@@ -1,9 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/server";
 import { displayName } from "@/lib/users/queries";
+import { SETTINGS_TAG } from "./queries";
 import { GRACE_MAX_MINUTES, type SettingsActionState } from "./types";
 
 export async function saveSettings(_prev: SettingsActionState, formData: FormData): Promise<SettingsActionState> {
@@ -29,6 +30,8 @@ export async function saveSettings(_prev: SettingsActionState, formData: FormDat
     return { ok: false, message: "Couldn't save. Try again." };
   }
 
+  // Expire now, not stale-while-revalidate: Late and pay must use the new value.
+  revalidateTag(SETTINGS_TAG, { expire: 0 });
   revalidatePath("/admin/settings");
   return { ok: true, savedAt: Date.now() };
 }

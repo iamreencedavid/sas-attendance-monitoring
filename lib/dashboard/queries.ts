@@ -1,4 +1,5 @@
 import "server-only";
+import { getSettings } from "@/lib/settings/queries";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getAllStaff } from "@/lib/staff/queries";
 import { toMinutes } from "@/lib/staff/shift";
@@ -27,7 +28,8 @@ type PunchRow = {
  * the browser never compares clocks.
  */
 export async function getTodayBoard(): Promise<TodayBoard> {
-  const staff = (await getAllStaff()).filter((s) => s.active);
+  const [allStaff, settings] = await Promise.all([getAllStaff(), getSettings()]);
+  const staff = allStaff.filter((s) => s.active);
   const now = shopNow();
   const yesterday = addDays(now.dateKey, -1);
 
@@ -76,7 +78,7 @@ export async function getTodayBoard(): Promise<TodayBoard> {
         const today = mine.filter((p) => p.minutes >= window.start - EARLY_MINUTES);
         // An IN left open from an earlier day still shows (as Missing OUT once it's 16h old).
         const carried = today.length === 0 && mine.at(-1)?.type === "in" ? [mine.at(-1)!] : today;
-        return deriveToday(s, carried, now.minutes);
+        return deriveToday(s, carried, now.minutes, settings.graceMinutes);
       })
       .sort((a, b) => toMinutes(a.shiftStart) - toMinutes(b.shiftStart) || a.name.localeCompare(b.name)),
   };

@@ -45,7 +45,10 @@ function whereOf(r: PunchRow): PunchWhere | null {
  * Shifts whose date (the IN's shop date) is within from–to, newest first.
  * Reads a day either side so overnight pairs are complete.
  */
-export async function getShifts({ staffId, from, to }: MonitoringFilters): Promise<ShiftRow[]> {
+export async function getShifts(
+  { staffId, from, to }: MonitoringFilters,
+  { graceMinutes }: { graceMinutes: number },
+): Promise<ShiftRow[]> {
   const staff = await getAllStaff();
   const supabase = createAdminClient();
 
@@ -92,5 +95,5 @@ export async function getShifts({ staffId, from, to }: MonitoringFilters): Promi
   });
 
   const info = new Map(staff.map((s) => [s.id, { name: s.name, role: s.role }]));
-  return pairShifts(punches, info, new Date()).filter((r) => r.dateKey >= from && r.dateKey <= to);
+  return pairShifts(punches, info, new Date(), graceMinutes).filter((r) => r.dateKey >= from && r.dateKey <= to);
 }

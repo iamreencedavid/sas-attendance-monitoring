@@ -13,9 +13,16 @@ function minutesBetween(from: string, to: string | Date): number {
 /**
  * Pairs each staff member's counted punches into shifts: an IN opens a
  * shift and the next OUT closes it; an OUT with nothing open is its own row.
- * Voided punches go into the history of the shift they belonged to.
+ * Voided punches go into the history of the shift they belonged to. An IN up
+ * to `graceMinutes` after the shift start is on time, and only the minutes
+ * past the grace count as late.
  */
-export function pairShifts(punches: ShiftPunch[], staff: Map<string, StaffInfo>, now: Date): ShiftRow[] {
+export function pairShifts(
+  punches: ShiftPunch[],
+  staff: Map<string, StaffInfo>,
+  now: Date,
+  graceMinutes: number,
+): ShiftRow[] {
   const sorted = [...punches].sort((a, b) => a.at.localeCompare(b.at));
   const rows: ShiftRow[] = [];
 
@@ -77,7 +84,7 @@ export function pairShifts(punches: ShiftPunch[], staff: Map<string, StaffInfo>,
         const stale = !r.out && now.getTime() - new Date(r.in.at).getTime() > STALE_IN_MS;
         r.state = r.out ? "closed" : stale ? "missing_out" : "on_shift";
         r.workedMinutes = r.out ? minutesBetween(r.in.at, r.out.at) : stale ? null : minutesBetween(r.in.at, now);
-        r.lateMinutes = Math.max(0, toMinutes(r.in.time) - toMinutes(r.in.shiftStart));
+        r.lateMinutes = Math.max(0, toMinutes(r.in.time) - (toMinutes(r.in.shiftStart) + graceMinutes));
         if (r.out) {
           // Only time after the shift end counts; arriving early never adds overtime.
           const { shiftStart, shiftEnd } = r.in;

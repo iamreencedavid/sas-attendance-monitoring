@@ -26,11 +26,13 @@ export function PayrollDrawer({
   staff,
   label,
   payroll,
+  graceMinutes,
   onClose,
 }: {
   staff: StaffRecord;
   label: string;
   payroll: Payroll;
+  graceMinutes: number;
   onClose: () => void;
 }) {
   const noDaily = staff.dailyRate === null;
@@ -52,7 +54,11 @@ export function PayrollDrawer({
             {noOt ? "" : "/hr"}
           </span>
         </SheetDescription>
-        <p className="text-xs text-admin-subtle">Using current rates. Late and early-leave minutes are deducted from the day&apos;s pay.</p>
+        <p className="text-xs text-admin-subtle">
+          {graceMinutes > 0
+            ? `Using current rates and a ${graceMinutes}-minute grace period. Late minutes after the grace, and early-leave minutes, are deducted from the day’s pay.`
+            : "Using current rates. Late and early-leave minutes are deducted from the day’s pay."}
+        </p>
       </SheetHeader>
 
       <div className="flex-1 px-5 py-4 sm:px-6">

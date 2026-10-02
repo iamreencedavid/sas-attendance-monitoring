@@ -23,12 +23,14 @@ export type StaffToday = {
   shiftEnd: string; // HH:MM
   status: TodayStatus;
   punches: TodayPunch[];
-  /** How late the first IN was against the shift start; 0 when on time or no IN. */
+  /** Minutes the first IN came after shift start + grace; 0 when on time or no IN. */
   lateMinutes: number;
-  /** Minutes past shift start with no IN (status "late"). */
+  /** Minutes past shift start + grace with no IN (status "late"). */
   overdueMinutes: number;
   /** True when a "late" shift has already ended with no punch at all. */
   shiftOver: boolean;
+  /** "08:15" while a "not_in" shift has started but is still inside the grace period, else null. */
+  graceUntil: string | null;
   /** IN→OUT time so far, an open IN counted up to now. */
   workedMinutes: number;
 };

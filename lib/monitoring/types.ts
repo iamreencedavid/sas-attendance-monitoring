@@ -57,6 +57,7 @@ export type ShiftRow = {
   state: ShiftState;
   /** IN→OUT, or IN→now while on shift; null without an IN. */
   workedMinutes: number | null;
+  /** Minutes the IN came after shift start + grace; 0 when on time or no IN. */
   lateMinutes: number;
   /** Minutes worked past the shift end (copied onto the IN); null until there's an IN and an OUT. */
   overtimeMinutes: number | null;

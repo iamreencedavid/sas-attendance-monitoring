@@ -29,7 +29,7 @@ function NotCounted({ payroll }: { payroll: Payroll }) {
 export function PayrollTable({
   picked,
 }: {
-  picked: { staff: StaffRecord; weeks: PayrollWeekView[]; total: Payroll } | null;
+  picked: { staff: StaffRecord; weeks: PayrollWeekView[]; total: Payroll; graceMinutes: number } | null;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   // What the drawer last showed, kept while it animates closed.
@@ -37,7 +37,7 @@ export function PayrollTable({
 
   if (!picked) return <Empty>Pick a staff member and press Search.</Empty>;
 
-  const { staff, weeks, total } = picked;
+  const { staff, weeks, total, graceMinutes } = picked;
   const noDaily = staff.dailyRate === null;
   const viewing = weeks.find((w) => w.monday === shown.monday);
 
@@ -140,7 +140,14 @@ export function PayrollTable({
 
       <Sheet open={open !== null} onOpenChange={(isOpen) => !isOpen && setOpen(null)}>
         {viewing && (
-          <PayrollDrawer key={shown.n} staff={staff} label={viewing.label} payroll={viewing.payroll} onClose={() => setOpen(null)} />
+          <PayrollDrawer
+            key={shown.n}
+            staff={staff}
+            label={viewing.label}
+            payroll={viewing.payroll}
+            graceMinutes={graceMinutes}
+            onClose={() => setOpen(null)}
+          />
         )}
       </Sheet>
     </>

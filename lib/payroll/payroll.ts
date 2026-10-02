@@ -33,7 +33,8 @@ const toCentavos = (pesos: number) => Math.round(pesos * 100);
 
 /**
  * Pay for one staff member's shifts (owner's rules):
- * - each completed shift pays one daily rate, minus late and undertime at
+ * - each completed shift pays one daily rate, minus late (minutes past the
+ *   grace period, from `getShifts`) and undertime at
  *   daily rate ÷ scheduled minutes per minute (never below zero);
  * - overtime pays exact minutes × hourly OT rate ÷ 60.
  * Uses the shift copied onto each IN, and works in centavos so totals add up.

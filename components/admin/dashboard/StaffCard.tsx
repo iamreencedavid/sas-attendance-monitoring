@@ -38,7 +38,7 @@ export function statusLine(s: StaffToday): string {
     case "missing_out":
       return `IN ${last?.time}, no OUT`;
     case "not_in":
-      return `Shift ${s.shiftStart}–${s.shiftEnd}`;
+      return `Shift ${s.shiftStart}–${s.shiftEnd}${s.graceUntil ? ` · grace until ${s.graceUntil}` : ""}`;
   }
 }
 

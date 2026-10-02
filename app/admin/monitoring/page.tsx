@@ -3,6 +3,7 @@ import { MonitoringFilters } from "@/components/admin/monitoring/MonitoringFilte
 import { ShiftTable } from "@/components/admin/monitoring/ShiftTable";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getShifts } from "@/lib/monitoring/queries";
+import { getSettings } from "@/lib/settings/queries";
 import type { ShiftRow } from "@/lib/monitoring/types";
 import { getAllStaff } from "@/lib/staff/queries";
 import type { StaffRecord } from "@/lib/staff/types";
@@ -30,7 +31,10 @@ export default async function MonitoringPage({ searchParams }: PageProps<"/admin
   let staff: StaffRecord[];
   let shifts: ShiftRow[];
   try {
-    [staff, shifts] = await Promise.all([getAllStaff(), getShifts({ staffId, from, to })]);
+    [staff, shifts] = await Promise.all([
+      getAllStaff(),
+      getSettings().then((settings) => getShifts({ staffId, from, to }, settings)),
+    ]);
   } catch (err) {
     console.error(err);
     return (
