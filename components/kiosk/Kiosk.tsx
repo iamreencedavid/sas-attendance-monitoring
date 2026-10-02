@@ -56,9 +56,11 @@ function describeStatus({ last, inToday }: PunchState, now: Date): string {
 export function Kiosk({
   staff,
   loadError,
+  deviceName,
 }: {
   staff: Staff[];
   loadError: boolean;
+  deviceName: string;
 }) {
   const cameraRef = useRef<CameraHandle>(null);
   const [cameraStatus, setCameraStatus] = useState<CameraStatus>("loading");
@@ -197,6 +199,13 @@ export function Kiosk({
           onPunch={punch}
         />
       </main>
+
+      <footer className="flex justify-center px-4 pb-3 text-[12.5px] text-mocha">
+        <p className="inline-flex items-center gap-2">
+          <span aria-hidden="true" className="size-2 rounded-full bg-punch-in" />
+          Registered device: <strong className="font-semibold text-espresso">{deviceName}</strong>
+        </p>
+      </footer>
 
       {success && <PunchResult {...success} onDone={reset} />}
     </div>

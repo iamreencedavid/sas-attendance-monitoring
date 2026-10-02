@@ -30,6 +30,8 @@ export type ShiftPunch = {
   voidReason: string | null;
   /** Null for manual punches and punches recorded before location capture. */
   where: PunchWhere | null;
+  /** Registered device name; null for manual punches and punches before device registration. */
+  deviceName: string | null;
 };
 
 /**

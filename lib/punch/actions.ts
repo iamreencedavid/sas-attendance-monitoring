@@ -2,6 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { headers } from "next/headers";
+import { DEVICE_NOT_REGISTERED, deviceUsed, requireDevice } from "@/lib/devices/kiosk";
 import { createAdminClient } from "@/lib/supabase/server";
 import { SHOP_TIMEZONE, shopDateKey, shopDayStart } from "@/lib/time";
 import { requestLocation } from "./location";
@@ -28,6 +29,8 @@ export type VerifyPinResult = { ok: true } | { ok: false; error: string };
  * endpoint, so it never reveals more than the error text below.
  */
 export async function verifyStaffPin(staffId: string, pin: string): Promise<VerifyPinResult> {
+  // Only registered browsers may try PINs, so strangers can't lock staff out.
+  if (!(await requireDevice())) return { ok: false, error: DEVICE_NOT_REGISTERED };
   if (!UUID.test(staffId)) return { ok: false, error: "Unknown staff member." };
   if (!PIN_PATTERN.test(pin)) return { ok: false, error: "PIN must be 4–6 digits." };
 
@@ -109,7 +112,7 @@ async function inToday(staffId: string): Promise<Date | null> {
  * never the photo or anything else about the person.
  */
 export async function getPunchState(staffId: string): Promise<PunchState> {
-  if (!UUID.test(staffId)) return { last: null, inToday: null };
+  if (!UUID.test(staffId) || !(await requireDevice())) return { last: null, inToday: null };
   const [last, todayIn] = await Promise.all([lastPunch(staffId), inToday(staffId)]);
   return { last, inToday: todayIn };
 }
@@ -130,6 +133,8 @@ export async function punch(formData: FormData): Promise<PunchResult> {
   const type = formData.get("type");
   const photo = formData.get("photo");
 
+  const device = await requireDevice();
+  if (!device) return { ok: false, error: DEVICE_NOT_REGISTERED };
   if (type !== "in" && type !== "out") return { ok: false, error: "Choose IN or OUT." };
   if (
     !(photo instanceof Blob) ||
@@ -178,6 +183,7 @@ export async function punch(formData: FormData): Promise<PunchResult> {
       p_country: where.country,
       p_latitude: where.latitude,
       p_longitude: where.longitude,
+      p_device_id: device.id,
     });
     if (error) {
       await supabase.storage.from(PHOTO_BUCKET).remove([photoPath]);
@@ -186,6 +192,7 @@ export async function punch(formData: FormData): Promise<PunchResult> {
       throw new Error(`record_punch failed: ${error.message}`);
     }
 
+    await deviceUsed(device, where);
     const { data: staff } = await supabase.from("staff").select("name").eq("id", staffId).single();
     return { ok: true, name: staff?.name ?? "", type, punchedAt: new Date(punchedAt as string) };
   } catch (err) {

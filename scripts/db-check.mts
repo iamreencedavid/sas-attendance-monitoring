@@ -3,6 +3,7 @@
 // Run with: npm run db:check   (reads .env.local)
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
+import { createHash } from "node:crypto";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const secretKey = process.env.SUPABASE_SECRET_KEY;
@@ -42,7 +43,7 @@ async function expectRejected(label: string, row: Record<string, unknown>) {
   throw new Error(`Expected "${label}" to be rejected, but it was saved.`);
 }
 
-async function recordPunch(staffId: string, type: "in" | "out") {
+async function recordPunch(staffId: string, type: "in" | "out", deviceId: string | null = null) {
   return supabase.rpc("record_punch", {
     p_id: crypto.randomUUID(),
     p_staff_id: staffId,
@@ -56,6 +57,7 @@ async function recordPunch(staffId: string, type: "in" | "out") {
     p_country: "PH",
     p_latitude: 14.676,
     p_longitude: 121.0437,
+    p_device_id: deviceId,
   });
 }
 
@@ -149,6 +151,52 @@ async function checkPunches(staffId: string) {
   await expectPunchRejected("second IN on the same day", staffId, "in", "in_today");
 }
 
+async function expectDeviceRejected(label: string, row: Record<string, unknown>) {
+  const { data, error } = await supabase.from("kiosk_devices").insert(row).select("id");
+  if (error) {
+    console.log(`✔ Rejected as expected: ${label} (${error.code})`);
+    return;
+  }
+  await supabase.from("kiosk_devices").delete().in("id", data.map((r) => r.id));
+  throw new Error(`Expected "${label}" to be rejected, but it was saved.`);
+}
+
+/** kiosk_devices table and punches.device_id. Leaves one punch with a device for cleanup. */
+async function checkDevices(staffId: string, deviceIds: string[]) {
+  const tokenHash = (seed: string) => createHash("sha256").update(`db-check ${seed} ${Date.now()}`).digest("hex");
+  const { data: device, error } = await supabase
+    .from("kiosk_devices")
+    .insert({ name: "DB Check tablet", token_hash: tokenHash("a"), device_label: "db-check", browser_label: "db-check" })
+    .select("id")
+    .single();
+  if (error) throw new Error(`Inserting a device failed (run npm run db:push?): ${error.message}`);
+  deviceIds.push(device.id);
+  console.log(`✔ Inserted device ${device.id}`);
+
+  await expectDeviceRejected("device with a blank name", { name: "  ", token_hash: tokenHash("b") });
+  await expectDeviceRejected("device with a 61-character name", { name: "x".repeat(61), token_hash: tokenHash("c") });
+  await expectDeviceRejected("device with a malformed token hash", { name: "Bad hash", token_hash: "not-a-hash" });
+
+  // The staff member is clocked out (checkPunches ended on an OUT); void today's IN to punch again.
+  await supabase.from("punches").update({ voided_at: new Date().toISOString(), void_reason: "db-check" }).eq("staff_id", staffId).is("voided_at", null);
+
+  const missing = await recordPunch(staffId, "in", crypto.randomUUID());
+  if (!missing.error) throw new Error("A punch with a nonexistent device id was saved.");
+  console.log(`✔ Rejected as expected: punch with a nonexistent device (${missing.error.code ?? missing.error.message})`);
+
+  const ok = await recordPunch(staffId, "in", device.id);
+  if (ok.error) throw new Error(`record_punch with a device failed: ${ok.error.message}`);
+  const { data: row, error: readError } = await supabase
+    .from("punches")
+    .select("device_id")
+    .eq("staff_id", staffId)
+    .is("voided_at", null)
+    .single();
+  if (readError) throw new Error(`Reading the device punch failed: ${readError.message}`);
+  if (row.device_id !== device.id) throw new Error(`device_id wasn't stored (got ${row.device_id}).`);
+  console.log("✔ record_punch stores device_id");
+}
+
 async function main() {
   console.log(`→ Connecting to ${url}`);
   const pinHash = await bcrypt.hash("1234", 10);
@@ -165,6 +213,7 @@ async function main() {
     throw new Error(`Insert failed: ${insertError.message}${tip ? `\n  Hint: ${tip}` : ""}`);
   }
   console.log(`✔ Inserted staff ${inserted.id}`);
+  const deviceIds: string[] = [];
 
   try {
     const { data: row, error: readError } = await supabase
@@ -187,15 +236,21 @@ async function main() {
     await expectRejected("negative overtime rate", { ...base, name: `${name} x4`, overtime_rate: -0.01 });
 
     await checkPunches(inserted.id);
+    await checkDevices(inserted.id, deviceIds);
   } finally {
-    // Punches first: staff_id is ON DELETE RESTRICT.
+    // Punches first: staff_id and device_id are ON DELETE RESTRICT.
     await supabase.from("punches").delete().eq("staff_id", inserted.id);
+    if (deviceIds.length > 0) {
+      const { error: deviceError } = await supabase.from("kiosk_devices").delete().in("id", deviceIds);
+      if (deviceError) console.error(`✖ Cleanup failed, delete devices ${deviceIds.join(", ")} by hand: ${deviceError.message}`);
+      else console.log("✔ Test device deleted");
+    }
     const { error: deleteError } = await supabase.from("staff").delete().eq("id", inserted.id);
     if (deleteError) console.error(`✖ Cleanup failed, delete ${inserted.id} by hand: ${deleteError.message}`);
     else console.log("✔ Test row deleted");
   }
 
-  console.log("\n✅ Supabase is connected; staff and punches accept data and reject bad rows.");
+  console.log("\n✅ Supabase is connected; staff, punches and devices accept data and reject bad rows.");
 }
 
 main().catch((err: unknown) => {

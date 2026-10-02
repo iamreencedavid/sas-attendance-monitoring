@@ -27,6 +27,7 @@ type PunchRow = {
   geo_country: string | null;
   geo_latitude: number | string | null;
   geo_longitude: number | string | null;
+  device: { name: string } | null;
 };
 
 function whereOf(r: PunchRow): PunchWhere | null {
@@ -51,7 +52,7 @@ export async function getShifts({ staffId, from, to }: MonitoringFilters): Promi
   let query = supabase
     .from("punches")
     .select(
-      "id, staff_id, type, punched_at, shift_start, shift_end, source, note, photo_path, voided_at, void_reason, ip_address, geo_city, geo_region, geo_country, geo_latitude, geo_longitude",
+      "id, staff_id, type, punched_at, shift_start, shift_end, source, note, photo_path, voided_at, void_reason, ip_address, geo_city, geo_region, geo_country, geo_latitude, geo_longitude, device:kiosk_devices(name)",
     )
     .gte("punched_at", shopDayStart(addDays(from, -1)).toISOString())
     .lt("punched_at", shopDayStart(addDays(to, 2)).toISOString())
@@ -59,7 +60,7 @@ export async function getShifts({ staffId, from, to }: MonitoringFilters): Promi
   if (staffId) query = query.eq("staff_id", staffId);
   const { data, error } = await query;
   if (error) throw new Error(`Loading punches failed: ${error.message}`);
-  const rows = data as PunchRow[];
+  const rows = data as unknown as PunchRow[];
 
   const paths = [...new Set(rows.flatMap((r) => (r.photo_path ? [r.photo_path] : [])))];
   const urls = new Map<string, string>();
@@ -86,6 +87,7 @@ export async function getShifts({ staffId, from, to }: MonitoringFilters): Promi
       voidedAt: r.voided_at,
       voidReason: r.void_reason,
       where: whereOf(r),
+      deviceName: r.device?.name ?? null,
     };
   });
 

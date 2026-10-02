@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createSessionClient } from "@/lib/supabase/session";
+import { safeAdminPath } from "./next";
 import { adminRole } from "./roles";
 
 export type SignInState = { error: string | null; email: string };
@@ -25,7 +26,7 @@ export async function signIn(_prev: SignInState, formData: FormData): Promise<Si
     return { error: WRONG, email };
   }
 
-  redirect("/admin");
+  redirect(safeAdminPath(formData.get("next")));
 }
 
 export async function signOut(): Promise<void> {

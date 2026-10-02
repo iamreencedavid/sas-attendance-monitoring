@@ -9,12 +9,13 @@ const initialState: SignInState = { error: null, email: "" };
 const fieldClass =
   "w-full rounded-xl border border-latte bg-cream/40 px-4 py-3 text-base outline-none focus-visible:border-caramel focus-visible:ring-4 focus-visible:ring-caramel/30 disabled:opacity-60";
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, formAction, pending] = useActionState(signIn, initialState);
   const [showPassword, setShowPassword] = useState(false);
 
   return (
     <form action={formAction} className="space-y-4">
+      {next && <input type="hidden" name="next" value={next} />}
       <div className="space-y-1.5">
         <label htmlFor="email" className="text-sm font-semibold">
           Email

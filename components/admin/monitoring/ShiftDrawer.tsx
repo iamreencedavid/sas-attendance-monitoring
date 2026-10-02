@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPinIcon } from "lucide-react";
+import { MapPinIcon, TabletSmartphoneIcon } from "lucide-react";
 import { startTransition, useActionState, useEffect, useId, useState, type FormEvent } from "react";
 import { RoleChip } from "@/components/admin/staff/RoleChip";
 import { SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -56,6 +56,12 @@ function PhotoBox({ label, punch, name }: { label: string; punch: ShiftPunch | n
       )}
       <figcaption className="mt-1 text-xs font-bold text-admin-subtle">{label}</figcaption>
       {punch && <WhereLine punch={punch} />}
+      {punch?.deviceName && (
+        <p className="mt-0.5 flex items-start gap-1 text-[11.5px] leading-snug text-admin-subtle">
+          <TabletSmartphoneIcon aria-hidden="true" className="mt-px size-3 flex-none" />
+          <span className="min-w-0 break-words">Device: {punch.deviceName}</span>
+        </p>
+      )}
     </figure>
   );
 }

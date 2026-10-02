@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { safeAdminPath } from "@/lib/auth/next";
 import { adminRole } from "@/lib/auth/roles";
 
 /**
@@ -36,7 +37,7 @@ export async function proxy(request: NextRequest) {
     return redirectKeepingCookies(request, response, "/login");
   }
   if (pathname === "/login" && canUseAdmin) {
-    return redirectKeepingCookies(request, response, "/admin");
+    return redirectKeepingCookies(request, response, safeAdminPath(request.nextUrl.searchParams.get("next")));
   }
   return response;
 }

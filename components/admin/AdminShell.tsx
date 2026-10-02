@@ -11,8 +11,11 @@ const NAV = [
   { href: "/admin/staff", label: "Staff" },
 ];
 
-// Below a divider: who can sign in to /admin.
-const SETTINGS_NAV = [{ href: "/admin/users", label: "Users" }];
+// Below a divider: who can sign in to /admin, and which browsers can punch.
+const SETTINGS_NAV = [
+  { href: "/admin/users", label: "Users" },
+  { href: "/admin/devices", label: "Devices" },
+];
 
 export function AdminShell({ children, adminEmail }: { children: ReactNode; adminEmail: string }) {
   const pathname = usePathname();

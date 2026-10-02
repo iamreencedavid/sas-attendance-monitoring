@@ -135,6 +135,17 @@ To give other people a login, sign in and use **Users** in the admin sidebar. Th
 
 On Vercel, `/admin` needs the same `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` variables. `OWNER_*` are only for the script.
 
+## Registering the shop tablet
+
+The punch page (`/`) only works in browsers the owner has registered. On the shop tablet:
+
+1. Open the punch page. It shows **This device isn't registered**.
+2. Tap **Sign in to register this browser** and sign in. You land on **Devices**.
+3. Tap **Register this browser**, give it a name (e.g. "Counter tablet") and tap **Register**.
+4. Sign out. The punch page now works and shows the device name at the bottom.
+
+The registration lives in that browser's cookie. Use one browser on the tablet, don't use a private window, and don't clear its site data, or you'll need to register again. Revoke a lost or replaced device from **Devices**.
+
 ## Troubleshooting
 
 | Message | Fix |
@@ -144,6 +155,7 @@ On Vercel, `/admin` needs the same `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_S
 | `The key was rejected` | Use the **secret** key (`sb_secret_…`), not the publishable one. |
 | `Cannot find project ref` on `db:push` | Run the link command from step 4. |
 | `set SEED_PIN_ANGELIE=<4–6 digits>` | Add that PIN variable to `.env.local` (step 7). |
+| "This device isn't registered" on the tablet | Register it (see *Registering the shop tablet*). Its cookie was cleared, it's a different browser, or the device was revoked. |
 | "Email or password is incorrect" for the owner | Run `npm run db:owner` again (step 8). It resets the password and the owner tag. |
 
 ## Adding schema changes later
