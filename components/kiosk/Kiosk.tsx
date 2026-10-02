@@ -12,6 +12,7 @@ import {
 import { KioskHeader } from "./KioskHeader";
 import { PunchPanel } from "./PunchPanel";
 import { PunchResult } from "./PunchResult";
+import { PunchSaving } from "./PunchSaving";
 
 const SUCCESS_RESET_MS = 3_000;
 const IDLE_RESET_MS = 30_000;
@@ -207,6 +208,7 @@ export function Kiosk({
         </p>
       </footer>
 
+      {submitting && selection && <PunchSaving name={selection.name} type={submitting} />}
       {success && <PunchResult {...success} onDone={reset} />}
     </div>
   );
