@@ -5,6 +5,7 @@ const ROLE_LABELS: Record<StaffRole, string> = {
   kitchen: "Kitchen",
   barista_kitchen: "Barista + Kitchen",
   supervisor: "Supervisor",
+  social_manager: "Social Manager",
 };
 
 type Props = {

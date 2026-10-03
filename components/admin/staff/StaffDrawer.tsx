@@ -278,8 +278,8 @@ function StaffForm({ mode, onClose }: { mode: DrawerMode; onClose: () => void })
       <fieldset className="mb-3.5">
         <legend className="mb-1.5 text-[12.5px] font-bold">Role</legend>
         <div className="grid grid-cols-2 gap-1.5">
-          {STAFF_ROLES.map((role) => (
-            <label key={role} className="flex-1">
+          {STAFF_ROLES.map((role, i) => (
+            <label key={role} className={`flex-1 ${i === STAFF_ROLES.length - 1 && i % 2 === 0 ? "col-span-2" : ""}`}>
               <input
                 type="radio"
                 name="role"
@@ -455,6 +455,7 @@ function checkedTone(role: (typeof STAFF_ROLES)[number]) {
     kitchen: "peer-checked:bg-roast-medium peer-checked:text-roast-medium-ink",
     barista_kitchen: "peer-checked:bg-[linear-gradient(90deg,var(--color-roast-light)_50%,var(--color-roast-medium)_50%)] peer-checked:text-roast-medium-ink",
     supervisor: "peer-checked:bg-roast-dark peer-checked:text-roast-dark-ink",
+    social_manager: "peer-checked:bg-role-social peer-checked:text-role-social-ink",
   }[role] satisfies string;
 }
 

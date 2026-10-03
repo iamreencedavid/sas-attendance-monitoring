@@ -9,6 +9,7 @@ const ROLE_NAMES: Record<StaffRole, string> = {
   kitchen: "Kitchen",
   barista_kitchen: "Barista + Kitchen",
   supervisor: "Supervisor",
+  social_manager: "Social Manager",
 };
 
 /** Human-readable list of what an edit changes, e.g. "Role: Barista → Kitchen". Empty when nothing changed. */

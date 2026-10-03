@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 
 type SeedStaff = {
   name: string;
-  role: "barista" | "kitchen" | "barista_kitchen" | "supervisor";
+  role: "barista" | "kitchen" | "barista_kitchen" | "supervisor" | "social_manager";
   shiftStart: string; // 24h HH:MM
   shiftEnd: string; // 24h HH:MM
   pinEnv: string; // .env.local variable holding this person's PIN
@@ -17,7 +17,7 @@ const SEED_STAFF: SeedStaff[] = [
   { name: "Angelie", role: "supervisor", shiftStart: "06:00", shiftEnd: "14:00", pinEnv: "SEED_PIN_ANGELIE" },
 ];
 
-const ROLES = ["barista", "kitchen", "barista_kitchen", "supervisor"];
+const ROLES = ["barista", "kitchen", "barista_kitchen", "supervisor", "social_manager"];
 const TIME_24H = /^([01]\d|2[0-3]):[0-5]\d$/;
 const PIN = /^\d{4,6}$/;
 

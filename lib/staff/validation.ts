@@ -2,7 +2,7 @@ import type { StaffRole } from "@/lib/punch/types";
 import { MAX_PESOS, PESO_INPUT } from "./pay";
 import type { SaturdayShift } from "./shift";
 
-export const STAFF_ROLES: StaffRole[] = ["barista", "kitchen", "barista_kitchen", "supervisor"];
+export const STAFF_ROLES: StaffRole[] = ["barista", "kitchen", "barista_kitchen", "supervisor", "social_manager"];
 
 export const TIME_24H = /^([01]\d|2[0-3]):[0-5]\d$/;
 const PIN = /^\d{4,6}$/;
