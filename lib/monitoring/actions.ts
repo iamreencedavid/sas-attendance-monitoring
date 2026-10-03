@@ -5,8 +5,8 @@ import { isAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/server";
 import { TIME_24H } from "@/lib/staff/validation";
 import { addDays, shopInstant, shopNow } from "@/lib/time";
-import type { PunchType } from "@/lib/punch/types";
-import type { ShiftActionState, ShiftField } from "./types";
+import { NON_PUNCHING_ROLE, type PunchType } from "@/lib/punch/types";
+import type { AddShiftField, AddShiftState, ShiftActionState, ShiftField } from "./types";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
@@ -173,4 +173,88 @@ export async function updateShift(_prev: ShiftActionState, formData: FormData): 
   revalidatePath("/admin/monitoring");
   revalidatePath("/admin/dashboard");
   return { ok: true, savedAt: Date.now() };
+}
+
+/**
+ * Adds a shift nobody punched at the kiosk: a manual IN and, when given, a
+ * manual OUT. Like the kiosk, a staff member gets one IN per shop date.
+ */
+export async function addShift(_prev: AddShiftState, formData: FormData): Promise<AddShiftState> {
+  if (!(await isAdmin())) return NOT_ALLOWED;
+
+  const staffId = str(formData, "staffId");
+  const dateKey = str(formData, "dateKey");
+  const inTime = str(formData, "inTime");
+  const outTime = str(formData, "outTime");
+  const note = str(formData, "note");
+
+  const errors: Partial<Record<AddShiftField, string>> = {};
+  if (!UUID.test(staffId)) errors.staffId = "Choose a staff member.";
+  if (!DATE_KEY.test(dateKey)) errors.dateKey = "Choose a date.";
+  else if (dateKey > shopNow().dateKey) errors.dateKey = "That date hasn't happened yet.";
+  if (!inTime) errors.inTime = "Enter an IN time.";
+  else if (!TIME_24H.test(inTime)) errors.inTime = "Use 24-hour time, e.g. 08:00.";
+  if (outTime && !TIME_24H.test(outTime)) errors.outTime = "Use 24-hour time, e.g. 16:00.";
+  if (!note) errors.note = "Add a note saying why this entry was added.";
+  else if (note.length > 300) errors.note = "Keep notes under 300 characters.";
+  if (Object.keys(errors).length) return { ok: false, errors };
+
+  // The shift date belongs to the IN, so an OUT at or before the IN time is the next day.
+  const inAt = shopInstant(dateKey, inTime);
+  const outAt = outTime ? shopInstant(outTime <= inTime ? addDays(dateKey, 1) : dateKey, outTime) : null;
+  const limit = Date.now() + FUTURE_SLACK_MS;
+  if (inAt.getTime() > limit) errors.inTime = "That time hasn't happened yet.";
+  if (outAt && outAt.getTime() > limit) errors.outTime = "That time hasn't happened yet.";
+  if (Object.keys(errors).length) return { ok: false, errors };
+
+  const supabase = createAdminClient();
+  let inId: string | null = null;
+  try {
+    const { data: staff, error: staffError } = await supabase
+      .from("staff")
+      .select("id, role, active")
+      .eq("id", staffId)
+      .maybeSingle();
+    if (staffError) throw new Error(`Loading staff failed: ${staffError.message}`);
+    if (!staff || !staff.active || staff.role === NON_PUNCHING_ROLE) {
+      return { ok: false, errors: { staffId: "Choose a staff member." } };
+    }
+
+    const { count, error: countError } = await supabase
+      .from("punches")
+      .select("id", { count: "exact", head: true })
+      .eq("staff_id", staffId)
+      .eq("type", "in")
+      .is("voided_at", null)
+      .gte("punched_at", shopInstant(dateKey, "00:00").toISOString())
+      .lt("punched_at", shopInstant(addDays(dateKey, 1), "00:00").toISOString());
+    if (countError) throw new Error(`Checking shifts failed: ${countError.message}`);
+    if (count) {
+      return { ok: false, errors: { dateKey: "Already has a shift on this date. Use Edit on that row instead." } };
+    }
+
+    const { data, error } = await supabase
+      .from("punches")
+      .insert({ staff_id: staffId, type: "in", punched_at: inAt.toISOString(), source: "manual", note })
+      .select("id")
+      .single();
+    if (error) throw new Error(`Insert IN failed: ${error.message}`);
+    inId = data.id;
+
+    if (outAt) {
+      const { error: outError } = await supabase
+        .from("punches")
+        .insert({ staff_id: staffId, type: "out", punched_at: outAt.toISOString(), source: "manual", note });
+      if (outError) throw new Error(`Insert OUT failed: ${outError.message}`);
+    }
+  } catch (err) {
+    console.error(err);
+    // Never leave half an entry behind.
+    if (inId) await supabase.from("punches").delete().eq("id", inId);
+    return SAVE_FAILED;
+  }
+
+  revalidatePath("/admin/monitoring");
+  revalidatePath("/admin/dashboard");
+  return { ok: true, savedAt: Date.now(), added: { staffId, dateKey } };
 }

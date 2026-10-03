@@ -1,4 +1,5 @@
 import type { PunchType, StaffRole } from "@/lib/punch/types";
+import type { SaturdayShift } from "@/lib/staff/shift";
 
 export type PunchSource = "kiosk" | "manual";
 
@@ -79,4 +80,24 @@ export type ShiftActionState = {
   savedAt?: number;
   message?: string;
   errors?: Partial<Record<ShiftField, string>>;
+};
+
+export type AddShiftField = "staffId" | "dateKey" | "inTime" | "outTime" | "note";
+
+export type AddShiftState = {
+  ok: boolean;
+  savedAt?: number;
+  /** Where the new shift landed, so the page can show it. */
+  added?: { staffId: string; dateKey: string };
+  message?: string;
+  errors?: Partial<Record<AddShiftField, string>>;
+};
+
+/** What the Add Time Entry drawer needs per staff member. */
+export type AddShiftStaff = {
+  id: string;
+  name: string;
+  shiftStart: string;
+  shiftEnd: string;
+  saturday: SaturdayShift;
 };
